@@ -106,6 +106,7 @@
   .status-done { background: #d1fae5; color: #065f46; }
   .status-notes { background: #e0e7ff; color: #3730a3; }
   .status-formulas { background: #fef9c3; color: #854d0e; }
+  .status-habits { background: #dcfce7; color: #166534; }
 
   /* Reorder controls */
   .reorder-controls { display: flex; flex-direction: column; gap: 3px; flex-shrink: 0; }
@@ -352,6 +353,9 @@
 
   .back-btn { margin-bottom: 16px; }
   .hint { font-size: 13px; color: #6b7280; margin-top: 6px; }
+  .show-more-link { display: inline-block; margin-top: 4px; color: #667eea; font-size: 13px; font-weight: 700; cursor: pointer; }
+  .show-more-link:hover { text-decoration: underline; }
+  .note-title { font-weight: 700; font-size: 15px; margin-bottom: 3px; color: #333; }
 
   /* Backup bar */
   .backup-bar {
@@ -398,6 +402,11 @@
           <div style="font-size:26px">🧮</div>
           <div style="font-weight:700">جدول معادلات</div>
           <div class="hint">لتعريف معادلات وحساب وتسجيل نتائج إدخالاتك عليها</div>
+        </div>
+        <div class="type-option" id="typeOptionHabits" onclick="selectListType('habits')">
+          <div style="font-size:26px">🕌</div>
+          <div style="font-weight:700">عادات وعبادات</div>
+          <div class="hint">لتتبع مهام يومية (عادات/عبادات) بعرض يومي، أسبوعي، أو شهري</div>
         </div>
       </div>
       <p class="hint" id="typeLockedHint" style="display:none">🔒 لا يمكن تغيير نوع القائمة بعد إنشائها</p>
@@ -462,15 +471,29 @@
       <button class="close-btn" onclick="closeModal('noteModal')">×</button>
     </div>
     <div class="form-group">
-      <label>نوع الملاحظة</label>
-      <select id="noteKind">
-        <option value="text">📝 نص حر</option>
-        <option value="checkbox">✅ خانة اختيار (تم / لم يتم)</option>
-      </select>
+      <label>العنوان (اختياري)</label>
+      <input type="text" id="noteTitle" placeholder="مثال: خطة الأسبوع">
     </div>
     <div class="form-group">
+      <label>نوع الملاحظة</label>
+      <select id="noteKind" onchange="onNoteKindChange()">
+        <option value="text">📝 نص حر</option>
+        <option value="checkbox">✅ خانة اختيار (تم / لم يتم)</option>
+        <option value="table">📊 جدول</option>
+      </select>
+    </div>
+    <div class="form-group" id="noteTextGroup">
       <label>الملاحظة</label>
       <textarea id="noteText" rows="5" placeholder="اكتب ملاحظتك هنا..." style="resize:vertical"></textarea>
+    </div>
+    <div class="form-group" id="noteTableGroup" style="display:none">
+      <label>الجدول</label>
+      <div id="noteTableEditor"></div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button type="button" class="btn-secondary" onclick="addNoteTableColumn()">+ عمود</button>
+        <button type="button" class="btn-secondary" onclick="addNoteTableRow()">+ صف</button>
+      </div>
+      <p class="hint">اضغط على أي خانة لتعديلها مباشرة</p>
     </div>
     <div class="modal-actions">
       <button class="btn-danger" id="deleteNoteBtn" onclick="deleteNote()" style="display:none;margin-left:auto">حذف</button>
@@ -632,10 +655,19 @@ let selectedTaskIcon = '⭐';
 let selectedListType = 'todo';
 let selectedTaskInputType = 'checkbox';
 let taskDropdownOptions = [];
+let expandedNoteIds = new Set(); // note ids shown fully expanded (UI-only, not persisted)
+let noteTableData = { columns: [], rows: [] }; // working state while editing a table-kind note
+let currentDay = getTodayKey(); // YYYY-MM-DD, for habits day view
+let currentWeekAnchor = getTodayKey(); // any day inside the displayed week, for habits week view
+let currentHabitMonth = getCurrentMonth(); // YYYY-MM, for habits month view
+let habitViewMode = 'day'; // 'day' | 'week' | 'month'
 
 const ICONS = ['📋','⭐','🕌','📖','💪','🏃','💧','🍎','💤','📚','💼','🎯','❤️','🌟','✨','🔥','💡','🎨','🎵','📝','🏠','👨‍👩‍👧','🚗','💰','📱','☕','🍽️','🧘','🌱','🎓','💊','🏋️'];
 
 const ARABIC_MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+const ARABIC_WEEKDAYS = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت']; // index = Date#getDay()
+const ARABIC_WEEKDAYS_SHORT = ['أحد','اثنين','ثلاثاء','أربعاء','خميس','جمعة','سبت'];
+const HIJRI_MONTHS = ['محرم','صفر','ربيع الأول','ربيع الآخر','جمادى الأولى','جمادى الآخرة','رجب','شعبان','رمضان','شوال','ذو القعدة','ذو الحجة'];
 
 const INPUT_TYPE_LABELS = { checkbox: '✅ خانة اختيار', text: '📝 نص', number: '🔢 رقم', dropdown: '📋 قائمة' };
 
@@ -755,6 +787,80 @@ function formatMonth(m) {
   return `${ARABIC_MONTHS[parseInt(mo) - 1]} ${y}`;
 }
 
+// ============ Date helpers (for habits/worship tracker) ============
+function dayKeyFromDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function getTodayKey() { return dayKeyFromDate(new Date()); }
+
+function dateFromDayKey(dayKey) {
+  const [y, m, d] = dayKey.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function shiftDay(dayKey, deltaDays) {
+  const d = dateFromDayKey(dayKey);
+  d.setDate(d.getDate() + deltaDays);
+  return dayKeyFromDate(d);
+}
+
+// Week is considered to start on Saturday (السبت) and end on Friday (الجمعة).
+function getWeekStartKey(dayKey) {
+  const d = dateFromDayKey(dayKey);
+  const dow = d.getDay(); // 0=Sun..6=Sat
+  const diffToSat = (dow + 1) % 7;
+  d.setDate(d.getDate() - diffToSat);
+  return dayKeyFromDate(d);
+}
+
+function getWeekDays(weekStartKey) {
+  const days = [];
+  for (let i = 0; i < 7; i++) days.push(shiftDay(weekStartKey, i));
+  return days;
+}
+
+function formatShortDate(dayKey) {
+  const [y, m, d] = dayKey.split('-').map(Number);
+  return `${d} ${ARABIC_MONTHS[m - 1]}`;
+}
+
+// Approximate Gregorian -> Hijri conversion (tabular/civil Islamic calendar).
+// Accurate to within ~1 day of the officially-announced Hijri date, which
+// depends on moon-sighting and can vary slightly by country/authority.
+function gregorianToHijri(date) {
+  const day = date.getDate();
+  const month = date.getMonth() + 1;
+  const year = date.getFullYear();
+
+  let jd = Math.floor((1461 * (year + 4800 + Math.floor((month - 14) / 12))) / 4)
+    + Math.floor((367 * (month - 2 - 12 * Math.floor((month - 14) / 12))) / 12)
+    - Math.floor((3 * Math.floor((year + 4900 + Math.floor((month - 14) / 12)) / 100)) / 4)
+    + day - 32075;
+
+  let l = jd - 1948440 + 10632;
+  const n = Math.floor((l - 1) / 10631);
+  l = l - 10631 * n + 354;
+  const j = Math.floor((10985 - l) / 5316) * Math.floor((50 * l) / 17719)
+    + Math.floor(l / 5670) * Math.floor((43 * l) / 15238);
+  l = l - Math.floor((30 - j) / 15) * Math.floor((17719 * j) / 50)
+    - Math.floor(j / 16) * Math.floor((15238 * j) / 43) + 29;
+  const hMonth = Math.floor((24 * l) / 709);
+  const hDay = l - Math.floor((709 * hMonth) / 24);
+  const hYear = 30 * n + j - 30;
+
+  return { day: hDay, month: hMonth, year: hYear };
+}
+
+function formatFullDate(dayKey) {
+  const d = dateFromDayKey(dayKey);
+  const weekday = ARABIC_WEEKDAYS[d.getDay()];
+  const hijri = gregorianToHijri(d);
+  const gregLabel = `${d.getDate()} ${ARABIC_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  const hijriLabel = `${hijri.day} ${HIJRI_MONTHS[hijri.month - 1]} ${hijri.year}هـ`;
+  return { weekday, gregLabel, hijriLabel };
+}
+
 // ============ Todo-list helpers ============
 function isFilled(task, record) {
   if (!record) return false;
@@ -843,7 +949,7 @@ function renderListsView(app) {
         <div class="empty-state">
           <div class="icon">📭</div>
           <p>ما عندك أي قائمة بعد.</p>
-          <p>أنشئ أول قائمة التزامات، ملاحظات، أو جدول معادلات لك.</p>
+          <p>أنشئ أول قائمة التزامات، ملاحظات، معادلات، أو عادات وعبادات لك.</p>
           <br>
           <button class="btn-primary" onclick="openNewListModal()">+ إنشاء قائمة</button>
         </div>
@@ -865,6 +971,14 @@ function renderListsView(app) {
         const entryCount = (list.entries || []).length;
         subtitle = `${fieldCount} خانة · ${entryCount} إدخال`;
         badgeHtml = `<span class="status-badge status-formulas">🧮 معادلات</span>`;
+      } else if (list.type === 'habits') {
+        const taskCount = (list.tasks || []).length;
+        const todayKey = getTodayKey();
+        const todayRecords = (list.days && list.days[todayKey] && list.days[todayKey].records) || {};
+        const doneToday = (list.tasks || []).filter(t => isFilled(t, todayRecords[t.id])).length;
+        const todayPercent = taskCount ? Math.round((doneToday / taskCount) * 100) : 0;
+        subtitle = `${taskCount} مهمة · اليوم: ${todayPercent}%`;
+        badgeHtml = `<span class="status-badge status-habits">🕌 عادات وعبادات</span>`;
       } else {
         const currentStatus = getMonthStatus(list, getCurrentMonth());
         const percent = getMonthPercent(list, getCurrentMonth());
@@ -906,6 +1020,26 @@ function ensureMonthData(list, month) {
   save();
 }
 
+// ---- Habits/worship tracker day-data helpers ----
+function ensureDayData(list, dayKey) {
+  if (!list.days) list.days = {};
+  let changed = false;
+  if (!list.days[dayKey]) { list.days[dayKey] = { records: {} }; changed = true; }
+  list.tasks.forEach(t => {
+    if (!list.days[dayKey].records[t.id]) {
+      list.days[dayKey].records[t.id] = { value: t.inputType === 'checkbox' ? false : '' };
+      changed = true;
+    }
+  });
+  return changed;
+}
+
+function ensureDaysData(list, dayKeys) {
+  let changed = false;
+  dayKeys.forEach(d => { if (ensureDayData(list, d)) changed = true; });
+  if (changed) save();
+}
+
 function renderDetailView(app) {
   const list = data.lists.find(l => l.id === currentListId);
   if (!list) { currentListId = null; render(); return; }
@@ -922,6 +1056,10 @@ function renderDetailView(app) {
     if (!list.fields) list.fields = [];
     if (!list.entries) list.entries = [];
     html += renderFormulasView(list);
+  } else if (list.type === 'habits') {
+    if (!list.tasks) list.tasks = [];
+    if (!list.days) list.days = {};
+    html += renderHabitsView(list);
   } else {
     ensureMonthData(list, currentMonth);
     const status = getMonthStatus(list, currentMonth);
@@ -995,14 +1133,14 @@ function renderMonthView(list, status, percent, completed, isCurrentMonth) {
             <div class="icon">📝</div>
             <p>لا توجد التزامات بعد. أضف أول التزام!</p>
           </div>
-        ` : list.tasks.map((t, idx) => renderTask(list, t, idx, list.tasks.length)).join('')}
+        ` : list.tasks.map((t, idx) => renderTask(list, t, idx, list.tasks.length, list.months[currentMonth].records[t.id])).join('')}
       </div>
     </div>
   `;
 }
 
-function renderTask(list, task, idx, total) {
-  const record = list.months[currentMonth].records[task.id] || {};
+function renderTask(list, task, idx, total, record) {
+  record = record || {};
   const rawVal = record.value;
   const reorderHtml = `
     <div class="reorder-controls">
@@ -1071,6 +1209,154 @@ function renderTableView(list) {
   return html;
 }
 
+// ---- Habits/worship tracker rendering ----
+function renderHabitsView(list) {
+  const bodyHtml = habitViewMode === 'day' ? renderHabitDayView(list)
+    : habitViewMode === 'week' ? renderHabitWeekView(list)
+    : renderHabitMonthView(list);
+  return `
+    <div class="view-toggle">
+      <button class="${habitViewMode === 'day' ? 'active' : ''}" onclick="setHabitView('day')">📅 يوم بيوم</button>
+      <button class="${habitViewMode === 'week' ? 'active' : ''}" onclick="setHabitView('week')">🗓️ أسبوعي</button>
+      <button class="${habitViewMode === 'month' ? 'active' : ''}" onclick="setHabitView('month')">📊 شهري</button>
+    </div>
+    ${bodyHtml}
+  `;
+}
+
+function renderDayNav() {
+  return `
+    <div class="month-nav">
+      <button class="btn-secondary" onclick="prevHabitDay()">‹ السابق</button>
+      <button class="btn-primary" onclick="goToHabitToday()">اليوم</button>
+      <button class="btn-secondary" onclick="nextHabitDay()">التالي ›</button>
+    </div>
+  `;
+}
+
+function renderHabitDayView(list) {
+  ensureDaysData(list, [currentDay]);
+  const dateInfo = formatFullDate(currentDay);
+  const isToday = currentDay === getTodayKey();
+  const records = list.days[currentDay].records;
+  const completed = list.tasks.filter(t => isFilled(t, records[t.id])).length;
+  const percent = list.tasks.length ? Math.round((completed / list.tasks.length) * 100) : 0;
+  return `
+    <div class="card">
+      <div class="month-header">
+        <div>
+          <div class="month-title">${dateInfo.weekday} · ${dateInfo.gregLabel}</div>
+          <div class="hint" style="margin-top:2px">🌙 ${dateInfo.hijriLabel} (تاريخ هجري تقريبي)</div>
+          ${!isToday ? '<span class="status-badge" style="background:#e0e7ff;color:#3730a3;margin-top:6px;display:inline-block">‹› يوم آخر</span>' : ''}
+        </div>
+        ${renderDayNav()}
+      </div>
+
+      <div class="progress-bar"><div class="progress-fill" style="width:${percent}%"></div></div>
+      <div class="progress-text">${percent}% · ${completed} من ${list.tasks.length} مُنجزة</div>
+
+      <div style="margin-top:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <h3>العادات والعبادات</h3>
+          <button class="btn-primary" onclick="openNewTaskModal()">+ إضافة</button>
+        </div>
+        ${list.tasks.length === 0 ? `
+          <div class="empty-state">
+            <div class="icon">🕌</div>
+            <p>لا توجد مهام بعد. أضف أول عادة أو عبادة لتتبعها يوميًا!</p>
+          </div>
+        ` : list.tasks.map((t, idx) => renderTask(list, t, idx, list.tasks.length, records[t.id])).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderWeekNav() {
+  return `
+    <div class="month-nav">
+      <button class="btn-secondary" onclick="prevHabitWeek()">‹ الأسبوع السابق</button>
+      <button class="btn-primary" onclick="goToHabitThisWeek()">هذا الأسبوع</button>
+      <button class="btn-secondary" onclick="nextHabitWeek()">الأسبوع التالي ›</button>
+    </div>
+  `;
+}
+
+function renderHabitWeekView(list) {
+  const weekStart = getWeekStartKey(currentWeekAnchor);
+  const days = getWeekDays(weekStart);
+  ensureDaysData(list, days);
+  const todayKey = getTodayKey();
+  let html = `<div class="card">
+    <div class="month-header">
+      <div class="month-title">${formatShortDate(days[0])} – ${formatShortDate(days[6])}</div>
+      ${renderWeekNav()}
+    </div>
+    <div class="table-wrapper"><table>
+      <thead><tr><th>المهمة</th>${days.map(d => {
+        const [, , dayNum] = d.split('-');
+        const wd = ARABIC_WEEKDAYS_SHORT[dateFromDayKey(d).getDay()];
+        return `<th style="${d === todayKey ? 'outline:2px solid #fff' : ''}">${wd}<br>${parseInt(dayNum)}</th>`;
+      }).join('')}</tr></thead>
+      <tbody>
+      ${list.tasks.length === 0
+        ? `<tr><td colspan="${days.length + 1}">لا توجد مهام بعد</td></tr>`
+        : list.tasks.map(t => {
+            const cells = days.map(d => {
+              const record = list.days[d].records[t.id];
+              const filled = isFilled(t, record);
+              const display = filled ? (t.inputType === 'checkbox' ? '✓' : escapeHtml(String(record.value))) : '—';
+              return `<td class="${filled ? 'completed-cell' : 'pending-cell'}">${display}</td>`;
+            }).join('');
+            return `<tr><td style="text-align:right;font-weight:600">${t.icon} ${escapeHtml(t.name)}</td>${cells}</tr>`;
+          }).join('')}
+      </tbody>
+    </table></div>
+  </div>`;
+  return html;
+}
+
+function renderHabitMonthNav() {
+  return `
+    <div class="month-nav">
+      <button class="btn-secondary" onclick="prevHabitMonth()">‹ السابق</button>
+      <button class="btn-primary" onclick="goToHabitThisMonth()">هذا الشهر</button>
+      <button class="btn-secondary" onclick="nextHabitMonth()">التالي ›</button>
+    </div>
+  `;
+}
+
+function renderHabitMonthView(list) {
+  const [y, m] = currentHabitMonth.split('-').map(Number);
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const dayKeys = [];
+  for (let i = 1; i <= daysInMonth; i++) dayKeys.push(`${currentHabitMonth}-${String(i).padStart(2, '0')}`);
+  ensureDaysData(list, dayKeys);
+  const todayKey = getTodayKey();
+  let html = `<div class="card">
+    <div class="month-header">
+      <div class="month-title">${formatMonth(currentHabitMonth)}</div>
+      ${renderHabitMonthNav()}
+    </div>
+    <div class="table-wrapper"><table>
+      <thead><tr><th>المهمة</th>${dayKeys.map(d => `<th style="${d === todayKey ? 'outline:2px solid #fff' : ''}">${parseInt(d.split('-')[2])}</th>`).join('')}</tr></thead>
+      <tbody>
+      ${list.tasks.length === 0
+        ? `<tr><td colspan="${dayKeys.length + 1}">لا توجد مهام بعد</td></tr>`
+        : list.tasks.map(t => {
+            const cells = dayKeys.map(d => {
+              const record = list.days[d].records[t.id];
+              const filled = isFilled(t, record);
+              const display = filled ? (t.inputType === 'checkbox' ? '✓' : escapeHtml(String(record.value))) : '—';
+              return `<td class="${filled ? 'completed-cell' : 'pending-cell'}" style="padding:6px;font-size:12px">${display}</td>`;
+            }).join('');
+            return `<tr><td style="text-align:right;font-weight:600;white-space:nowrap">${t.icon} ${escapeHtml(t.name)}</td>${cells}</tr>`;
+          }).join('')}
+      </tbody>
+    </table></div>
+  </div>`;
+  return html;
+}
+
 // ---- Notes list rendering (flat, not tied to a month) ----
 function renderNotesView(list) {
   const notes = list.notes || [];
@@ -1090,6 +1376,8 @@ function renderNotesView(list) {
   `;
 }
 
+const NOTE_TRUNCATE_LEN = 220;
+
 function renderNote(note, idx, total) {
   const dateLabel = formatNoteDate(note);
   const reorderHtml = `
@@ -1098,6 +1386,21 @@ function renderNote(note, idx, total) {
       <button class="reorder-btn" onclick="event.stopPropagation(); moveNote(${idx}, 1)" ${idx === total - 1 ? 'disabled' : ''}>▼</button>
     </div>
   `;
+  const titleHtml = note.title ? `<div class="note-title">${escapeHtml(note.title)}</div>` : '';
+
+  if (note.kind === 'table') {
+    return `
+      <div class="note-item" style="display:flex;align-items:flex-start;gap:12px">
+        <div style="flex:1;cursor:pointer" onclick="openEditNoteModal('${note.id}')">
+          <div class="note-time">🕒 ${escapeHtml(dateLabel)}</div>
+          ${titleHtml}
+          ${renderNoteTableView(note)}
+        </div>
+        ${reorderHtml}
+      </div>
+    `;
+  }
+
   if (note.kind === 'checkbox') {
     const checked = !!note.checked;
     return `
@@ -1105,7 +1408,8 @@ function renderNote(note, idx, total) {
         <div class="task-check ${checked ? 'checked' : ''}" onclick="event.stopPropagation(); toggleNoteChecked('${note.id}')" style="margin-top:2px">${checked ? '✓' : ''}</div>
         <div style="flex:1;cursor:pointer" onclick="openEditNoteModal('${note.id}')">
           <div class="note-time">🕒 ${escapeHtml(dateLabel)}</div>
-          <div class="note-text" style="${checked ? 'text-decoration:line-through;color:#9ca3af' : ''}">${escapeHtml(note.text)}</div>
+          ${titleHtml}
+          ${renderNoteBody(note, checked)}
         </div>
         ${reorderHtml}
       </div>
@@ -1115,11 +1419,40 @@ function renderNote(note, idx, total) {
     <div class="note-item" style="display:flex;align-items:flex-start;gap:12px">
       <div style="flex:1;cursor:pointer" onclick="openEditNoteModal('${note.id}')">
         <div class="note-time">🕒 ${escapeHtml(dateLabel)}</div>
-        <div class="note-text">${escapeHtml(note.text)}</div>
+        ${titleHtml}
+        ${renderNoteBody(note, false)}
       </div>
       ${reorderHtml}
     </div>
   `;
+}
+
+function renderNoteBody(note, strikethrough) {
+  const text = note.text || '';
+  const expanded = expandedNoteIds.has(note.id);
+  const isLong = text.length > NOTE_TRUNCATE_LEN;
+  const shown = (isLong && !expanded) ? text.slice(0, NOTE_TRUNCATE_LEN).trimEnd() + '…' : text;
+  return `
+    <div class="note-text" style="${strikethrough ? 'text-decoration:line-through;color:#9ca3af' : ''}">${escapeHtml(shown)}</div>
+    ${isLong ? `<span class="show-more-link" onclick="event.stopPropagation(); toggleNoteExpanded('${note.id}')">${expanded ? '▲ عرض أقل' : '▼ عرض المزيد'}</span>` : ''}
+  `;
+}
+
+function renderNoteTableView(note) {
+  const t = note.table || { columns: [], rows: [] };
+  return `
+    <div class="table-wrapper" style="margin-top:6px">
+      <table>
+        <thead><tr>${t.columns.map(c => `<th>${escapeHtml(c)}</th>`).join('')}</tr></thead>
+        <tbody>${t.rows.map(r => `<tr>${r.map(cell => `<td>${escapeHtml(cell || '—')}</td>`).join('')}</tr>`).join('')}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function toggleNoteExpanded(id) {
+  if (expandedNoteIds.has(id)) expandedNoteIds.delete(id); else expandedNoteIds.add(id);
+  render();
 }
 
 function renderStats(list) {
@@ -1252,6 +1585,10 @@ function openList(id) {
   currentListId = id;
   currentMonth = getCurrentMonth();
   viewMode = 'month';
+  currentDay = getTodayKey();
+  currentWeekAnchor = getTodayKey();
+  currentHabitMonth = getCurrentMonth();
+  habitViewMode = 'day';
   render();
 }
 
@@ -1274,6 +1611,33 @@ function nextMonth() {
 
 function goToCurrentMonth() { currentMonth = getCurrentMonth(); render(); }
 function goToMonth(m) { currentMonth = m; viewMode = 'month'; render(); }
+
+// ---- Habits/worship tracker navigation ----
+function setHabitView(v) { habitViewMode = v; render(); }
+
+function prevHabitDay() { currentDay = shiftDay(currentDay, -1); render(); }
+function nextHabitDay() { currentDay = shiftDay(currentDay, 1); render(); }
+function goToHabitToday() { currentDay = getTodayKey(); render(); }
+
+function prevHabitWeek() { currentWeekAnchor = shiftDay(currentWeekAnchor, -7); render(); }
+function nextHabitWeek() { currentWeekAnchor = shiftDay(currentWeekAnchor, 7); render(); }
+function goToHabitThisWeek() { currentWeekAnchor = getTodayKey(); render(); }
+
+function prevHabitMonth() {
+  const [y, m] = currentHabitMonth.split('-').map(Number);
+  const d = new Date(y, m - 2, 1);
+  currentHabitMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  render();
+}
+
+function nextHabitMonth() {
+  const [y, m] = currentHabitMonth.split('-').map(Number);
+  const d = new Date(y, m, 1);
+  currentHabitMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  render();
+}
+
+function goToHabitThisMonth() { currentHabitMonth = getCurrentMonth(); render(); }
 
 function deleteMonthData(month) {
   const list = data.lists.find(l => l.id === currentListId);
@@ -1314,10 +1678,24 @@ function moveField(index, direction) {
   render();
 }
 
+// Returns the current records bucket for a list, based on its type
+// ('habits' tracks per-day records, everything else tracks per-month records).
+function getRecordsBucket(list) {
+  if (list.type === 'habits') {
+    if (!list.days) list.days = {};
+    if (!list.days[currentDay]) list.days[currentDay] = { records: {} };
+    return list.days[currentDay].records;
+  }
+  if (!list.months) list.months = {};
+  if (!list.months[currentMonth]) list.months[currentMonth] = { records: {} };
+  return list.months[currentMonth].records;
+}
+
 function toggleCheckbox(taskId) {
   const list = data.lists.find(l => l.id === currentListId);
-  if (!list.months[currentMonth].records[taskId]) list.months[currentMonth].records[taskId] = { value: false };
-  list.months[currentMonth].records[taskId].value = !list.months[currentMonth].records[taskId].value;
+  const records = getRecordsBucket(list);
+  if (!records[taskId]) records[taskId] = { value: false };
+  records[taskId].value = !records[taskId].value;
   save();
   render();
 }
@@ -1325,8 +1703,9 @@ function toggleCheckbox(taskId) {
 function setTaskValue(taskId, val) {
   const list = data.lists.find(l => l.id === currentListId);
   const task = list.tasks.find(t => t.id === taskId);
-  if (!list.months[currentMonth].records[taskId]) list.months[currentMonth].records[taskId] = {};
-  list.months[currentMonth].records[taskId].value = (task.inputType === 'number' && val !== '') ? Number(val) : val;
+  const records = getRecordsBucket(list);
+  if (!records[taskId]) records[taskId] = {};
+  records[taskId].value = (task.inputType === 'number' && val !== '') ? Number(val) : val;
   save();
   render();
 }
@@ -1345,6 +1724,7 @@ function openNewListModal() {
   document.getElementById('typeOptionTodo').classList.remove('locked');
   document.getElementById('typeOptionNotes').classList.remove('locked');
   document.getElementById('typeOptionFormulas').classList.remove('locked');
+  document.getElementById('typeOptionHabits').classList.remove('locked');
   document.getElementById('typeLockedHint').style.display = 'none';
   selectListType('todo');
   openModal('listModal');
@@ -1360,6 +1740,7 @@ function openEditListModal(id) {
   document.getElementById('typeOptionTodo').classList.add('locked');
   document.getElementById('typeOptionNotes').classList.add('locked');
   document.getElementById('typeOptionFormulas').classList.add('locked');
+  document.getElementById('typeOptionHabits').classList.add('locked');
   document.getElementById('typeLockedHint').style.display = 'block';
   markSelectedType(list.type || 'todo');
   openModal('listModal');
@@ -1375,6 +1756,7 @@ function markSelectedType(type) {
   document.getElementById('typeOptionTodo').classList.toggle('selected', type === 'todo');
   document.getElementById('typeOptionNotes').classList.toggle('selected', type === 'notes');
   document.getElementById('typeOptionFormulas').classList.toggle('selected', type === 'formulas');
+  document.getElementById('typeOptionHabits').classList.toggle('selected', type === 'habits');
 }
 
 function saveList() {
@@ -1390,6 +1772,8 @@ function saveList() {
       newList = { id: uid(), name, icon: selectedListIcon, type: 'notes', notes: [] };
     } else if (selectedListType === 'formulas') {
       newList = { id: uid(), name, icon: selectedListIcon, type: 'formulas', fields: [], entries: [] };
+    } else if (selectedListType === 'habits') {
+      newList = { id: uid(), name, icon: selectedListIcon, type: 'habits', tasks: [], days: {} };
     } else {
       newList = { id: uid(), name, icon: selectedListIcon, type: 'todo', tasks: [], months: {} };
     }
@@ -1477,10 +1861,17 @@ function saveTask() {
   } else {
     const newTask = { id: uid(), name, icon: selectedTaskIcon, inputType, options: inputType === 'dropdown' ? taskDropdownOptions.slice() : undefined };
     list.tasks.push(newTask);
-    Object.keys(list.months).forEach(m => {
-      if (!list.months[m].records) list.months[m].records = {};
-      list.months[m].records[newTask.id] = { value: inputType === 'checkbox' ? false : '' };
-    });
+    if (list.type === 'habits') {
+      Object.keys(list.days || {}).forEach(d => {
+        if (!list.days[d].records) list.days[d].records = {};
+        list.days[d].records[newTask.id] = { value: inputType === 'checkbox' ? false : '' };
+      });
+    } else {
+      Object.keys(list.months).forEach(m => {
+        if (!list.months[m].records) list.months[m].records = {};
+        list.months[m].records[newTask.id] = { value: inputType === 'checkbox' ? false : '' };
+      });
+    }
   }
   save();
   closeModal('taskModal');
@@ -1488,10 +1879,15 @@ function saveTask() {
 }
 
 function deleteTask() {
-  if (!confirm('حذف هذه المهمة من جميع الأشهر؟')) return;
   const list = data.lists.find(l => l.id === currentListId);
+  const confirmMsg = list.type === 'habits' ? 'حذف هذه المهمة من جميع الأيام؟' : 'حذف هذه المهمة من جميع الأشهر؟';
+  if (!confirm(confirmMsg)) return;
   list.tasks = list.tasks.filter(t => t.id !== editingTaskId);
-  Object.keys(list.months).forEach(m => { delete list.months[m].records[editingTaskId]; });
+  if (list.type === 'habits') {
+    Object.keys(list.days || {}).forEach(d => { delete list.days[d].records[editingTaskId]; });
+  } else {
+    Object.keys(list.months).forEach(m => { delete list.months[m].records[editingTaskId]; });
+  }
   save();
   closeModal('taskModal');
   render();
@@ -1501,8 +1897,12 @@ function deleteTask() {
 function openNewNoteModal() {
   editingNoteId = null;
   document.getElementById('noteModalTitle').textContent = 'إضافة ملاحظة';
+  document.getElementById('noteTitle').value = '';
   document.getElementById('noteText').value = '';
   document.getElementById('noteKind').value = 'text';
+  document.getElementById('noteTextGroup').style.display = 'block';
+  document.getElementById('noteTableGroup').style.display = 'none';
+  noteTableData = { columns: [], rows: [] };
   document.getElementById('deleteNoteBtn').style.display = 'none';
   openModal('noteModal');
 }
@@ -1512,24 +1912,114 @@ function openEditNoteModal(noteId) {
   const note = (list.notes || []).find(n => n.id === noteId);
   if (!note) return;
   editingNoteId = noteId;
+  const kind = note.kind || 'text';
   document.getElementById('noteModalTitle').textContent = 'تعديل الملاحظة';
-  document.getElementById('noteText').value = note.text;
-  document.getElementById('noteKind').value = note.kind || 'text';
+  document.getElementById('noteTitle').value = note.title || '';
+  document.getElementById('noteText').value = note.text || '';
+  document.getElementById('noteKind').value = kind;
+  document.getElementById('noteTextGroup').style.display = kind === 'table' ? 'none' : 'block';
+  document.getElementById('noteTableGroup').style.display = kind === 'table' ? 'block' : 'none';
+  if (kind === 'table') {
+    noteTableData = note.table
+      ? { columns: note.table.columns.slice(), rows: note.table.rows.map(r => r.slice()) }
+      : { columns: ['العمود 1', 'العمود 2'], rows: [['', '']] };
+    renderNoteTableEditor();
+  } else {
+    noteTableData = { columns: [], rows: [] };
+  }
   document.getElementById('deleteNoteBtn').style.display = 'inline-block';
   openModal('noteModal');
 }
 
+function onNoteKindChange() {
+  const kind = document.getElementById('noteKind').value;
+  document.getElementById('noteTextGroup').style.display = kind === 'table' ? 'none' : 'block';
+  document.getElementById('noteTableGroup').style.display = kind === 'table' ? 'block' : 'none';
+  if (kind === 'table' && noteTableData.columns.length === 0) {
+    noteTableData = { columns: ['العمود 1', 'العمود 2'], rows: [['', '']] };
+    renderNoteTableEditor();
+  }
+}
+
+// ---- Table editor (for table-kind notes) ----
+function renderNoteTableEditor() {
+  const container = document.getElementById('noteTableEditor');
+  const cols = noteTableData.columns;
+  const rows = noteTableData.rows;
+  let html = '<div class="table-wrapper"><table><thead><tr>';
+  cols.forEach((c, ci) => {
+    html += `<th style="padding:4px">
+      <input type="text" value="${escapeAttr(c)}" style="font-size:12px;padding:6px;text-align:center;color:#111;background:#fff;border-radius:6px" oninput="updateNoteTableColumn(${ci}, this.value)">
+      ${cols.length > 1 ? `<div style="margin-top:4px;cursor:pointer;color:#fecaca;font-size:11px" onclick="removeNoteTableColumn(${ci})">حذف العمود ×</div>` : ''}
+    </th>`;
+  });
+  html += '</tr></thead><tbody>';
+  rows.forEach((row, ri) => {
+    html += '<tr>';
+    row.forEach((cell, ci) => {
+      html += `<td style="padding:4px"><input type="text" value="${escapeAttr(cell)}" style="font-size:13px;padding:6px" oninput="updateNoteTableCell(${ri}, ${ci}, this.value)"></td>`;
+    });
+    html += `<td style="border:none;text-align:center">${rows.length > 1 ? `<span style="cursor:pointer;color:#ef4444;font-weight:700" onclick="removeNoteTableRow(${ri})" title="حذف الصف">×</span>` : ''}</td>`;
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  container.innerHTML = html;
+}
+
+function updateNoteTableColumn(idx, val) { noteTableData.columns[idx] = val; }
+function updateNoteTableCell(ri, ci, val) { noteTableData.rows[ri][ci] = val; }
+
+function addNoteTableColumn() {
+  noteTableData.columns.push(`عمود ${noteTableData.columns.length + 1}`);
+  noteTableData.rows.forEach(r => r.push(''));
+  renderNoteTableEditor();
+}
+
+function removeNoteTableColumn(idx) {
+  if (noteTableData.columns.length <= 1) return;
+  noteTableData.columns.splice(idx, 1);
+  noteTableData.rows.forEach(r => r.splice(idx, 1));
+  renderNoteTableEditor();
+}
+
+function addNoteTableRow() {
+  noteTableData.rows.push(noteTableData.columns.map(() => ''));
+  renderNoteTableEditor();
+}
+
+function removeNoteTableRow(idx) {
+  if (noteTableData.rows.length <= 1) return;
+  noteTableData.rows.splice(idx, 1);
+  renderNoteTableEditor();
+}
+
 function saveNote() {
-  const text = document.getElementById('noteText').value.trim();
-  if (!text) { alert('اكتب نص الملاحظة'); return; }
+  const title = document.getElementById('noteTitle').value.trim();
   const kind = document.getElementById('noteKind').value;
   const list = data.lists.find(l => l.id === currentListId);
   if (!list.notes) list.notes = [];
   const nowIso = new Date().toISOString();
+
+  let text = '';
+  let table;
+  if (kind === 'table') {
+    const cleanCols = noteTableData.columns.map(c => c.trim() || 'عمود');
+    if (!cleanCols.length) { alert('أضف عمودًا واحدًا على الأقل'); return; }
+    const cleanRows = noteTableData.rows.map(r => r.map(c => c.trim()));
+    const hasContent = cleanRows.some(r => r.some(c => c !== ''));
+    if (!hasContent) { alert('أدخل بيانات في الجدول'); return; }
+    table = { columns: cleanCols, rows: cleanRows };
+  } else {
+    text = document.getElementById('noteText').value.trim();
+    if (!text) { alert('اكتب نص الملاحظة'); return; }
+  }
+
   if (editingNoteId) {
     const note = list.notes.find(n => n.id === editingNoteId);
-    note.text = text;
+    note.title = title || undefined;
     note.kind = kind;
+    note.text = text;
+    note.table = table;
     if (kind === 'checkbox') {
       if (typeof note.checked !== 'boolean') note.checked = false;
     } else {
@@ -1539,8 +2029,10 @@ function saveNote() {
   } else {
     list.notes.push({
       id: uid(),
+      title: title || undefined,
       kind,
       text,
+      table,
       checked: kind === 'checkbox' ? false : undefined,
       createdAt: nowIso,
       updatedAt: null
