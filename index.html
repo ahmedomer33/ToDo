@@ -334,20 +334,45 @@
   .option-tag .remove-x { cursor: pointer; color: #ef4444; font-weight: 700; }
 
   /* Table view */
-  .table-wrapper { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; }
   th, td { padding: 10px; text-align: center; border: 1px solid #e5e7eb; }
   th { background: #667eea; color: #fff; font-weight: 600; }
   td.completed-cell { background: #d1fae5; }
   td.pending-cell { background: #fee2e2; }
 
+  .table-wrapper { overflow: auto; position: relative; max-height: 65vh; }
+  .table-wrapper table { border-collapse: separate; border-spacing: 0; }
+  .table-wrapper thead th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+  }
+  /* Sticky first column on every table, so the row label stays visible while scrolling horizontally */
+  .table-wrapper th:first-child,
+  .table-wrapper td:first-child {
+    position: sticky;
+    right: 0;
+    z-index: 2;
+    background: #f9fafb;
+    box-shadow: -2px 0 4px rgba(0,0,0,0.06);
+  }
+  .table-wrapper thead th:first-child {
+    z-index: 4;
+    background: #667eea;
+    color: #fff;
+  }
+
   /* Stats */
   .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
     gap: 10px;
-    overflow-x: auto;
-    padding-bottom: 10px;
+    max-height: 360px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 2px 4px 10px 4px;
+    border: 1px solid #eef0f4;
+    border-radius: 12px;
   }
   .stat-card {
     position: relative;
@@ -1821,6 +1846,13 @@ function renderHabitCardView(list) {
         <label>عنوان اليوم (اختياري)</label>
         <input type="text" value="${escapeAttr(dayData.title || '')}" placeholder="مثال: يوم مميز، اليوم الخامس من رمضان..." onchange="setHabitDayTitle(this.value)">
       </div>
+      ${(list.habitStartDate && list.habitEndDate) ? `
+        <div class="form-group">
+          <button class="btn-secondary" style="width:100%" onclick="triggerImportDayTitles()">📥 استيراد عناوين كل الأيام من Excel</button>
+          <p class="hint">يقرأ العمود الأول من ملف Excel كعنوان لكل يوم بالترتيب، بدءًا من ${formatGregorianFull(list.habitStartDate)}. يتطلب اتصالًا بالإنترنت أول مرة فقط.</p>
+        </div>
+        <input type="file" id="dayTitlesFileInput" accept=".xlsx,.xls" style="display:none" onchange="importDayTitlesFile(event)">
+      ` : ''}
       <div class="progress-bar"><div class="progress-fill" style="width:${percent}%"></div></div>
       <div class="progress-text">${percent}% · ${completed} من ${tasks.length} مهام منجزة</div>
       <div style="margin-top:20px">
@@ -2139,6 +2171,77 @@ function setHabitDayTitle(val) {
   list.habitDays[currentHabitDate].title = val.trim();
   save();
   render();
+}
+
+// ---- Bulk day-title import from Excel (.xlsx/.xls) ----
+function getHabitDateRange(list) {
+  if (!list.habitStartDate || !list.habitEndDate) return [];
+  const dates = [];
+  let cur = list.habitStartDate;
+  while (cur <= list.habitEndDate) {
+    dates.push(cur);
+    cur = addDaysToDateStr(cur, 1);
+  }
+  return dates;
+}
+
+function loadSheetJs(callback) {
+  if (window.XLSX) { callback(); return; }
+  const script = document.createElement('script');
+  script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  script.onload = callback;
+  script.onerror = () => alert('تعذّر تحميل أداة قراءة ملفات Excel. تأكد من اتصالك بالإنترنت وحاول مجددًا.');
+  document.head.appendChild(script);
+}
+
+function triggerImportDayTitles() {
+  const list = data.lists.find(l => l.id === currentListId);
+  if (!list || !list.habitStartDate || !list.habitEndDate) {
+    alert('حدد الفترة الزمنية (من/إلى) لهذه القائمة أولًا، ثم أعد المحاولة.');
+    return;
+  }
+  loadSheetJs(() => {
+    const input = document.getElementById('dayTitlesFileInput');
+    if (input) input.click();
+  });
+}
+
+function importDayTitlesFile(event) {
+  const file = event.target.files[0];
+  event.target.value = '';
+  if (!file) return;
+  const list = data.lists.find(l => l.id === currentListId);
+  const dates = getHabitDateRange(list);
+  if (!dates.length) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array' });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+      const titles = rows
+        .map(r => (r && r[0] !== undefined && r[0] !== null) ? String(r[0]).trim() : '')
+        .filter(t => t !== '');
+      if (!titles.length) { alert('لم يتم العثور على أي عناوين في العمود الأول من الملف.'); return; }
+      const count = Math.min(titles.length, dates.length);
+      const msg = titles.length !== dates.length
+        ? `الفترة تحتوي ${dates.length} يومًا، والملف يحتوي ${titles.length} عنوانًا. سيتم تعيين أول ${count} عنوانًا بالترتيب لأول ${count} يوم من الفترة. متابعة؟`
+        : `سيتم تعيين ${count} عنوانًا لأيام الفترة بالترتيب، بدءًا من ${formatGregorianFull(list.habitStartDate)}. متابعة؟`;
+      if (!confirm(msg)) return;
+      if (!list.habitDays) list.habitDays = {};
+      for (let i = 0; i < count; i++) {
+        const d = dates[i];
+        ensureHabitDayData(list, d, true);
+        list.habitDays[d].title = titles[i];
+      }
+      save();
+      render();
+      alert(`تم استيراد ${count} عنوانًا بنجاح ✅`);
+    } catch (err) {
+      alert('تعذّر قراءة الملف. تأكد أنه ملف Excel صالح (.xlsx أو .xls).');
+    }
+  };
+  reader.readAsArrayBuffer(file);
 }
 
 function prevHabitWeek() { currentHabitWeekStart = addDaysToDateStr(currentHabitWeekStart, -7); render(); }
