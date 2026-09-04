@@ -105,6 +105,20 @@
   .status-in-progress { background: #fef3c7; color: #92400e; }
   .status-done { background: #d1fae5; color: #065f46; }
   .status-notes { background: #e0e7ff; color: #3730a3; }
+  .status-formulas { background: #fef9c3; color: #854d0e; }
+
+  /* Reorder controls */
+  .reorder-controls { display: flex; flex-direction: column; gap: 3px; flex-shrink: 0; }
+  .reorder-btn {
+    background: #e5e7eb;
+    color: #374151;
+    font-size: 11px;
+    padding: 3px 9px;
+    border-radius: 6px;
+    line-height: 1;
+  }
+  .reorder-btn:hover:not(:disabled) { background: #d1d5db; transform: none; }
+  .reorder-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
   /* Tasks */
   .task-item {
@@ -248,7 +262,7 @@
   .icon-option.selected { background: #667eea; border-color: #667eea; transform: scale(1.1); }
 
   /* Type selector (todo vs notes) */
-  .type-selector { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .type-selector { display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap: 10px; }
   .type-option {
     border: 2px solid #e5e7eb;
     border-radius: 12px;
@@ -380,6 +394,11 @@
           <div style="font-weight:700">قائمة ملاحظات</div>
           <div class="hint">لإضافة ملاحظات حرة خلال الشهر</div>
         </div>
+        <div class="type-option" id="typeOptionFormulas" onclick="selectListType('formulas')">
+          <div style="font-size:26px">🧮</div>
+          <div style="font-weight:700">جدول معادلات</div>
+          <div class="hint">لتعريف معادلات وحساب وتسجيل نتائج إدخالاتك عليها</div>
+        </div>
       </div>
       <p class="hint" id="typeLockedHint" style="display:none">🔒 لا يمكن تغيير نوع القائمة بعد إنشائها</p>
     </div>
@@ -461,6 +480,57 @@
   </div>
 </div>
 
+<!-- Modal: Add/Edit Field (Formulas lists) -->
+<div class="modal-overlay" id="fieldModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="fieldModalTitle">إضافة خانة</div>
+      <button class="close-btn" onclick="closeModal('fieldModal')">×</button>
+    </div>
+    <div class="form-group">
+      <label>اسم الخانة</label>
+      <input type="text" id="fieldName" placeholder="مثال: تحويل كجم إلى رطل">
+    </div>
+    <div class="form-group">
+      <label>المعادلة</label>
+      <input type="text" id="fieldFormula" placeholder="مثال: x * 2.20462">
+      <p class="hint">استخدم <b>x</b> ليمثل الرقم الذي سيتم إدخاله. مسموح بـ ‎+ - * / ^ ( )‎ ودوال مثل ‎Math.sqrt(x)‎ أو ‎Math.pow(x,2)‎</p>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-danger" id="deleteFieldBtn" onclick="deleteField()" style="display:none;margin-left:auto">حذف</button>
+      <button class="btn-secondary" onclick="closeModal('fieldModal')">إلغاء</button>
+      <button class="btn-primary" onclick="saveField()">حفظ</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Add/Edit Entry (Formulas lists) -->
+<div class="modal-overlay" id="entryModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="entryModalTitle">إضافة إدخال</div>
+      <button class="close-btn" onclick="closeModal('entryModal')">×</button>
+    </div>
+    <div class="form-group">
+      <label>اختر الخانة (المعادلة)</label>
+      <select id="entryFieldId" onchange="updateEntryPreview()"></select>
+    </div>
+    <div class="form-group">
+      <label>الرقم المُدخل</label>
+      <input type="number" id="entryInputValue" step="any" placeholder="أدخل الرقم" oninput="updateEntryPreview()">
+    </div>
+    <div class="form-group">
+      <label>النتيجة</label>
+      <div id="entryResultPreview" style="font-size:22px;font-weight:800;color:#667eea;padding:6px 0">—</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-danger" id="deleteEntryBtn" onclick="deleteEntry()" style="display:none;margin-left:auto">حذف</button>
+      <button class="btn-secondary" onclick="closeModal('entryModal')">إلغاء</button>
+      <button class="btn-primary" onclick="saveEntry()">حفظ</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: Storage info -->
 <div class="modal-overlay" id="infoModal">
   <div class="modal">
@@ -504,6 +574,8 @@ let viewMode = 'month'; // 'month' | 'table'
 let editingListId = null;
 let editingTaskId = null;
 let editingNoteId = null;
+let editingFieldId = null;
+let editingEntryId = null;
 let selectedListIcon = '📋';
 let selectedTaskIcon = '⭐';
 let selectedListType = 'todo';
@@ -700,7 +772,7 @@ function renderListsView(app) {
         <div class="empty-state">
           <div class="icon">📭</div>
           <p>ما عندك أي قائمة بعد.</p>
-          <p>أنشئ أول قائمة التزامات أو ملاحظات شهرية لك.</p>
+          <p>أنشئ أول قائمة التزامات، ملاحظات، أو جدول معادلات لك.</p>
           <br>
           <button class="btn-primary" onclick="openNewListModal()">+ إنشاء قائمة</button>
         </div>
@@ -711,12 +783,17 @@ function renderListsView(app) {
         <h2 style="margin:0">قوائمك</h2>
         <button class="btn-primary" onclick="openNewListModal()">+ قائمة جديدة</button>
       </div>`;
-    data.lists.forEach(list => {
+    data.lists.forEach((list, idx) => {
       let subtitle, badgeHtml;
       if (list.type === 'notes') {
         const count = getNoteCount(list);
         subtitle = `${count} ملاحظة`;
         badgeHtml = `<span class="status-badge status-notes">📝 ملاحظات</span>`;
+      } else if (list.type === 'formulas') {
+        const fieldCount = (list.fields || []).length;
+        const entryCount = (list.entries || []).length;
+        subtitle = `${fieldCount} خانة · ${entryCount} إدخال`;
+        badgeHtml = `<span class="status-badge status-formulas">🧮 معادلات</span>`;
       } else {
         const currentStatus = getMonthStatus(list, getCurrentMonth());
         const percent = getMonthPercent(list, getCurrentMonth());
@@ -724,15 +801,21 @@ function renderListsView(app) {
         badgeHtml = `<span class="status-badge status-${currentStatus}">${statusLabel(currentStatus)}</span>`;
       }
       html += `
-        <div class="list-item" onclick="openList('${list.id}')">
-          <div class="list-info">
-            <div class="list-icon">${list.icon}</div>
-            <div>
-              <div class="list-name">${escapeHtml(list.name)}</div>
-              <div class="list-count">${subtitle}</div>
-            </div>
+        <div class="list-item">
+          <div class="reorder-controls" onclick="event.stopPropagation()">
+            <button class="reorder-btn" onclick="moveList(${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>▲</button>
+            <button class="reorder-btn" onclick="moveList(${idx}, 1)" ${idx === data.lists.length - 1 ? 'disabled' : ''}>▼</button>
           </div>
-          ${badgeHtml}
+          <div style="display:flex;align-items:center;justify-content:space-between;flex:1;gap:10px;cursor:pointer" onclick="openList('${list.id}')">
+            <div class="list-info">
+              <div class="list-icon">${list.icon}</div>
+              <div>
+                <div class="list-name">${escapeHtml(list.name)}</div>
+                <div class="list-count">${subtitle}</div>
+              </div>
+            </div>
+            ${badgeHtml}
+          </div>
         </div>`;
     });
     html += `</div>`;
@@ -763,6 +846,10 @@ function renderDetailView(app) {
   if (list.type === 'notes') {
     if (!list.notes) list.notes = [];
     html += renderNotesView(list);
+  } else if (list.type === 'formulas') {
+    if (!list.fields) list.fields = [];
+    if (!list.entries) list.entries = [];
+    html += renderFormulasView(list);
   } else {
     ensureMonthData(list, currentMonth);
     const status = getMonthStatus(list, currentMonth);
@@ -836,15 +923,21 @@ function renderMonthView(list, status, percent, completed, isCurrentMonth) {
             <div class="icon">📝</div>
             <p>لا توجد التزامات بعد. أضف أول التزام!</p>
           </div>
-        ` : list.tasks.map(t => renderTask(list, t)).join('')}
+        ` : list.tasks.map((t, idx) => renderTask(list, t, idx, list.tasks.length)).join('')}
       </div>
     </div>
   `;
 }
 
-function renderTask(list, task) {
+function renderTask(list, task, idx, total) {
   const record = list.months[currentMonth].records[task.id] || {};
   const rawVal = record.value;
+  const reorderHtml = `
+    <div class="reorder-controls">
+      <button class="reorder-btn" onclick="event.stopPropagation(); moveTask(${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>▲</button>
+      <button class="reorder-btn" onclick="event.stopPropagation(); moveTask(${idx}, 1)" ${idx === total - 1 ? 'disabled' : ''}>▼</button>
+    </div>
+  `;
 
   if (task.inputType === 'checkbox') {
     const checked = rawVal === true;
@@ -854,6 +947,7 @@ function renderTask(list, task) {
         <div class="task-content" onclick="openEditTaskModal('${task.id}')">
           <div class="task-name ${checked ? 'completed' : ''}">${task.icon} ${escapeHtml(task.name)}</div>
         </div>
+        ${reorderHtml}
       </div>
     `;
   }
@@ -874,7 +968,10 @@ function renderTask(list, task) {
 
   return `
     <div class="task-item" style="align-items:flex-start;flex-direction:column;gap:8px">
-      <div class="task-name" style="cursor:pointer" onclick="openEditTaskModal('${task.id}')">${task.icon} ${escapeHtml(task.name)}</div>
+      <div style="display:flex;width:100%;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div class="task-name" style="cursor:pointer" onclick="openEditTaskModal('${task.id}')">${task.icon} ${escapeHtml(task.name)}</div>
+        ${reorderHtml}
+      </div>
       <div class="task-value-row">${controlHtml}</div>
     </div>
   `;
@@ -916,13 +1013,19 @@ function renderNotesView(list) {
           <div class="icon">🗒️</div>
           <p>لا توجد ملاحظات بعد.</p>
         </div>
-      ` : notes.slice().reverse().map(n => renderNote(n)).join('')}
+      ` : notes.slice().reverse().map((n, idx) => renderNote(n, idx, notes.length)).join('')}
     </div>
   `;
 }
 
-function renderNote(note) {
+function renderNote(note, idx, total) {
   const dateLabel = formatNoteDate(note);
+  const reorderHtml = `
+    <div class="reorder-controls">
+      <button class="reorder-btn" onclick="event.stopPropagation(); moveNote(${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>▲</button>
+      <button class="reorder-btn" onclick="event.stopPropagation(); moveNote(${idx}, 1)" ${idx === total - 1 ? 'disabled' : ''}>▼</button>
+    </div>
+  `;
   if (note.kind === 'checkbox') {
     const checked = !!note.checked;
     return `
@@ -932,13 +1035,17 @@ function renderNote(note) {
           <div class="note-time">🕒 ${escapeHtml(dateLabel)}</div>
           <div class="note-text" style="${checked ? 'text-decoration:line-through;color:#9ca3af' : ''}">${escapeHtml(note.text)}</div>
         </div>
+        ${reorderHtml}
       </div>
     `;
   }
   return `
-    <div class="note-item" onclick="openEditNoteModal('${note.id}')">
-      <div class="note-time">🕒 ${escapeHtml(dateLabel)}</div>
-      <div class="note-text">${escapeHtml(note.text)}</div>
+    <div class="note-item" style="display:flex;align-items:flex-start;gap:12px">
+      <div style="flex:1;cursor:pointer" onclick="openEditNoteModal('${note.id}')">
+        <div class="note-time">🕒 ${escapeHtml(dateLabel)}</div>
+        <div class="note-text">${escapeHtml(note.text)}</div>
+      </div>
+      ${reorderHtml}
     </div>
   `;
 }
@@ -962,7 +1069,95 @@ function renderStats(list) {
   }).join('');
 }
 
+// ---- Formulas list rendering ----
+function evaluateFormula(formula, x) {
+  try {
+    // eslint-disable-next-line no-new-func
+    const fn = new Function('x', 'Math', '"use strict"; return (' + formula + ');');
+    const result = fn(x, Math);
+    if (typeof result !== 'number' || !isFinite(result)) return null;
+    return Math.round(result * 1e6) / 1e6; // trim floating-point noise
+  } catch (e) {
+    return null;
+  }
+}
+
+function renderFormulasView(list) {
+  const fields = list.fields || [];
+  const entries = list.entries || [];
+  return `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px">
+        <h2 style="margin:0">🧩 الخانات (${fields.length})</h2>
+        <button class="btn-primary" onclick="openNewFieldModal()">+ إضافة خانة</button>
+      </div>
+      ${fields.length === 0 ? `
+        <div class="empty-state">
+          <div class="icon">🧮</div>
+          <p>لا توجد خانات بعد. أضف أول معادلة!</p>
+        </div>
+      ` : fields.map((f, idx) => renderField(f, idx, fields.length)).join('')}
+    </div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px">
+        <h2 style="margin:0">🧾 الإدخالات (${entries.length})</h2>
+        <button class="btn-primary" onclick="openNewEntryModal()" ${fields.length === 0 ? 'disabled title="أضف خانة أولًا"' : ''}>+ إضافة إدخال</button>
+      </div>
+      ${entries.length === 0 ? `
+        <div class="empty-state">
+          <div class="icon">🧾</div>
+          <p>لا توجد إدخالات بعد.</p>
+        </div>
+      ` : entries.slice().reverse().map((e, idx) => renderEntry(e, idx, entries.length)).join('')}
+    </div>
+  `;
+}
+
+function renderField(field, idx, total) {
+  return `
+    <div class="task-item">
+      <div class="task-content" style="cursor:pointer" onclick="openEditFieldModal('${field.id}')">
+        <div class="task-name">🔣 ${escapeHtml(field.name)}</div>
+        <div class="hint" style="margin-top:2px">x = الرقم المُدخل · النتيجة = ${escapeHtml(field.formula)}</div>
+      </div>
+      <div class="reorder-controls">
+        <button class="reorder-btn" onclick="moveField(${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>▲</button>
+        <button class="reorder-btn" onclick="moveField(${idx}, 1)" ${idx === total - 1 ? 'disabled' : ''}>▼</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderEntry(entry, idx, total) {
+  const dateLabel = formatNoteDate(entry);
+  return `
+    <div class="note-item" style="display:flex;align-items:flex-start;gap:12px">
+      <div style="flex:1;cursor:pointer" onclick="openEditEntryModal('${entry.id}')">
+        <div class="note-time">🕒 ${escapeHtml(dateLabel)}</div>
+        <div class="task-name">${escapeHtml(entry.fieldName)}</div>
+        <div class="hint">${escapeHtml(String(entry.inputValue))} → ${escapeHtml(entry.formula)}</div>
+        <div style="font-size:18px;font-weight:800;color:#667eea;margin-top:4px">${escapeHtml(String(entry.result))}</div>
+      </div>
+      <div class="reorder-controls">
+        <button class="reorder-btn" onclick="event.stopPropagation(); moveEntry(${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>▲</button>
+        <button class="reorder-btn" onclick="event.stopPropagation(); moveEntry(${idx}, 1)" ${idx === total - 1 ? 'disabled' : ''}>▼</button>
+      </div>
+    </div>
+  `;
+}
+
 // ============ Actions ============
+function moveList(index, direction) {
+  const newIndex = index + direction;
+  if (newIndex < 0 || newIndex >= data.lists.length) return;
+  const tmp = data.lists[index];
+  data.lists[index] = data.lists[newIndex];
+  data.lists[newIndex] = tmp;
+  save();
+  render();
+}
+
 function openList(id) {
   currentListId = id;
   currentMonth = getCurrentMonth();
@@ -1007,6 +1202,28 @@ function toggleManualDone() {
   render();
 }
 
+function moveTask(index, direction) {
+  const list = data.lists.find(l => l.id === currentListId);
+  const newIndex = index + direction;
+  if (newIndex < 0 || newIndex >= list.tasks.length) return;
+  const tmp = list.tasks[index];
+  list.tasks[index] = list.tasks[newIndex];
+  list.tasks[newIndex] = tmp;
+  save();
+  render();
+}
+
+function moveField(index, direction) {
+  const list = data.lists.find(l => l.id === currentListId);
+  const newIndex = index + direction;
+  if (newIndex < 0 || newIndex >= list.fields.length) return;
+  const tmp = list.fields[index];
+  list.fields[index] = list.fields[newIndex];
+  list.fields[newIndex] = tmp;
+  save();
+  render();
+}
+
 function toggleCheckbox(taskId) {
   const list = data.lists.find(l => l.id === currentListId);
   if (!list.months[currentMonth].records[taskId]) list.months[currentMonth].records[taskId] = { value: false };
@@ -1037,6 +1254,7 @@ function openNewListModal() {
   renderIconPicker('listIconPicker', ICONS, selectedListIcon, (icon) => { selectedListIcon = icon; });
   document.getElementById('typeOptionTodo').classList.remove('locked');
   document.getElementById('typeOptionNotes').classList.remove('locked');
+  document.getElementById('typeOptionFormulas').classList.remove('locked');
   document.getElementById('typeLockedHint').style.display = 'none';
   selectListType('todo');
   openModal('listModal');
@@ -1051,6 +1269,7 @@ function openEditListModal(id) {
   renderIconPicker('listIconPicker', ICONS, selectedListIcon, (icon) => { selectedListIcon = icon; });
   document.getElementById('typeOptionTodo').classList.add('locked');
   document.getElementById('typeOptionNotes').classList.add('locked');
+  document.getElementById('typeOptionFormulas').classList.add('locked');
   document.getElementById('typeLockedHint').style.display = 'block';
   markSelectedType(list.type || 'todo');
   openModal('listModal');
@@ -1065,6 +1284,7 @@ function markSelectedType(type) {
   selectedListType = type;
   document.getElementById('typeOptionTodo').classList.toggle('selected', type === 'todo');
   document.getElementById('typeOptionNotes').classList.toggle('selected', type === 'notes');
+  document.getElementById('typeOptionFormulas').classList.toggle('selected', type === 'formulas');
 }
 
 function saveList() {
@@ -1075,10 +1295,15 @@ function saveList() {
     list.name = name;
     list.icon = selectedListIcon;
   } else {
-    data.lists.push(selectedListType === 'notes'
-      ? { id: uid(), name, icon: selectedListIcon, type: 'notes', notes: [] }
-      : { id: uid(), name, icon: selectedListIcon, type: 'todo', tasks: [], months: {} }
-    );
+    let newList;
+    if (selectedListType === 'notes') {
+      newList = { id: uid(), name, icon: selectedListIcon, type: 'notes', notes: [] };
+    } else if (selectedListType === 'formulas') {
+      newList = { id: uid(), name, icon: selectedListIcon, type: 'formulas', fields: [], entries: [] };
+    } else {
+      newList = { id: uid(), name, icon: selectedListIcon, type: 'todo', tasks: [], months: {} };
+    }
+    data.lists.push(newList);
   }
   save();
   closeModal('listModal');
@@ -1252,6 +1477,177 @@ function toggleNoteChecked(noteId) {
   note.checked = !note.checked;
   note.updatedAt = new Date().toISOString();
   save();
+  render();
+}
+
+function moveNote(displayIndex, direction) {
+  const list = data.lists.find(l => l.id === currentListId);
+  const reversed = (list.notes || []).slice().reverse();
+  const newIndex = displayIndex + direction;
+  if (newIndex < 0 || newIndex >= reversed.length) return;
+  const tmp = reversed[displayIndex];
+  reversed[displayIndex] = reversed[newIndex];
+  reversed[newIndex] = tmp;
+  list.notes = reversed.reverse();
+  save();
+  render();
+}
+
+function moveEntry(displayIndex, direction) {
+  const list = data.lists.find(l => l.id === currentListId);
+  const reversed = (list.entries || []).slice().reverse();
+  const newIndex = displayIndex + direction;
+  if (newIndex < 0 || newIndex >= reversed.length) return;
+  const tmp = reversed[displayIndex];
+  reversed[displayIndex] = reversed[newIndex];
+  reversed[newIndex] = tmp;
+  list.entries = reversed.reverse();
+  save();
+  render();
+}
+
+// ---- Field modal (formulas lists) ----
+function openNewFieldModal() {
+  editingFieldId = null;
+  document.getElementById('fieldModalTitle').textContent = 'إضافة خانة';
+  document.getElementById('fieldName').value = '';
+  document.getElementById('fieldFormula').value = '';
+  document.getElementById('deleteFieldBtn').style.display = 'none';
+  openModal('fieldModal');
+}
+
+function openEditFieldModal(fieldId) {
+  const list = data.lists.find(l => l.id === currentListId);
+  const field = (list.fields || []).find(f => f.id === fieldId);
+  if (!field) return;
+  editingFieldId = fieldId;
+  document.getElementById('fieldModalTitle').textContent = 'تعديل الخانة';
+  document.getElementById('fieldName').value = field.name;
+  document.getElementById('fieldFormula').value = field.formula;
+  document.getElementById('deleteFieldBtn').style.display = 'inline-block';
+  openModal('fieldModal');
+}
+
+function saveField() {
+  const name = document.getElementById('fieldName').value.trim();
+  const formula = document.getElementById('fieldFormula').value.trim();
+  if (!name) { alert('أدخل اسم الخانة'); return; }
+  if (!formula) { alert('أدخل المعادلة'); return; }
+  if (evaluateFormula(formula, 1) === null) {
+    alert('المعادلة غير صالحة. تأكد من كتابتها بشكل صحيح باستخدام x.');
+    return;
+  }
+  const list = data.lists.find(l => l.id === currentListId);
+  if (!list.fields) list.fields = [];
+  if (editingFieldId) {
+    const field = list.fields.find(f => f.id === editingFieldId);
+    field.name = name;
+    field.formula = formula;
+  } else {
+    list.fields.push({ id: uid(), name, formula });
+  }
+  save();
+  closeModal('fieldModal');
+  render();
+}
+
+function deleteField() {
+  if (!confirm('حذف هذه الخانة؟ لن يؤثر هذا على الإدخالات المسجّلة سابقًا باستخدامها.')) return;
+  const list = data.lists.find(l => l.id === currentListId);
+  list.fields = (list.fields || []).filter(f => f.id !== editingFieldId);
+  save();
+  closeModal('fieldModal');
+  render();
+}
+
+// ---- Entry modal (formulas lists) ----
+function openNewEntryModal() {
+  const list = data.lists.find(l => l.id === currentListId);
+  if (!list.fields || !list.fields.length) { alert('أضف خانة (معادلة) أولًا'); return; }
+  editingEntryId = null;
+  document.getElementById('entryModalTitle').textContent = 'إضافة إدخال';
+  populateEntryFieldSelect(list.fields[0].id);
+  document.getElementById('entryInputValue').value = '';
+  document.getElementById('deleteEntryBtn').style.display = 'none';
+  updateEntryPreview();
+  openModal('entryModal');
+}
+
+function openEditEntryModal(entryId) {
+  const list = data.lists.find(l => l.id === currentListId);
+  const entry = (list.entries || []).find(e => e.id === entryId);
+  if (!entry) return;
+  editingEntryId = entryId;
+  document.getElementById('entryModalTitle').textContent = 'تعديل الإدخال';
+  populateEntryFieldSelect(entry.fieldId);
+  document.getElementById('entryInputValue').value = entry.inputValue;
+  document.getElementById('deleteEntryBtn').style.display = 'inline-block';
+  updateEntryPreview();
+  openModal('entryModal');
+}
+
+function populateEntryFieldSelect(selectedFieldId) {
+  const list = data.lists.find(l => l.id === currentListId);
+  const select = document.getElementById('entryFieldId');
+  select.innerHTML = (list.fields || []).map(f =>
+    `<option value="${f.id}" ${f.id === selectedFieldId ? 'selected' : ''}>${escapeHtml(f.name)} (${escapeHtml(f.formula)})</option>`
+  ).join('');
+}
+
+function updateEntryPreview() {
+  const list = data.lists.find(l => l.id === currentListId);
+  const fieldId = document.getElementById('entryFieldId').value;
+  const field = (list.fields || []).find(f => f.id === fieldId);
+  const raw = document.getElementById('entryInputValue').value;
+  const preview = document.getElementById('entryResultPreview');
+  if (!field || raw === '') { preview.textContent = '—'; return; }
+  const result = evaluateFormula(field.formula, Number(raw));
+  preview.textContent = result === null ? 'تعذّر الحساب' : result;
+}
+
+function saveEntry() {
+  const list = data.lists.find(l => l.id === currentListId);
+  const fieldId = document.getElementById('entryFieldId').value;
+  const field = (list.fields || []).find(f => f.id === fieldId);
+  const raw = document.getElementById('entryInputValue').value;
+  if (!field) { alert('اختر خانة'); return; }
+  if (raw === '') { alert('أدخل الرقم'); return; }
+  const inputValue = Number(raw);
+  const result = evaluateFormula(field.formula, inputValue);
+  if (result === null) { alert('تعذّر حساب المعادلة على هذا الرقم'); return; }
+  if (!list.entries) list.entries = [];
+  const nowIso = new Date().toISOString();
+  if (editingEntryId) {
+    const entry = list.entries.find(e => e.id === editingEntryId);
+    entry.fieldId = field.id;
+    entry.fieldName = field.name;
+    entry.formula = field.formula;
+    entry.inputValue = inputValue;
+    entry.result = result;
+    entry.updatedAt = nowIso;
+  } else {
+    list.entries.push({
+      id: uid(),
+      fieldId: field.id,
+      fieldName: field.name,
+      formula: field.formula,
+      inputValue,
+      result,
+      createdAt: nowIso,
+      updatedAt: null
+    });
+  }
+  save();
+  closeModal('entryModal');
+  render();
+}
+
+function deleteEntry() {
+  if (!confirm('حذف هذا الإدخال؟')) return;
+  const list = data.lists.find(l => l.id === currentListId);
+  list.entries = (list.entries || []).filter(e => e.id !== editingEntryId);
+  save();
+  closeModal('entryModal');
   render();
 }
 
