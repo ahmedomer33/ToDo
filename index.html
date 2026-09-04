@@ -172,7 +172,52 @@
   }
   .note-item:hover { border-color: #667eea; }
   .note-time { font-size: 12px; color: #6b7280; margin-bottom: 4px; font-weight: 600; }
+  .note-title { font-weight: 700; font-size: 15.5px; margin-bottom: 4px; color: #1f2937; }
   .note-text { white-space: pre-wrap; line-height: 1.6; }
+  .note-text.clamped {
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .note-show-more {
+    background: none;
+    border: none;
+    color: #667eea;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 6px 0 0;
+    cursor: pointer;
+  }
+  .note-show-more:hover { text-decoration: underline; transform: none; }
+  .note-kind-tag {
+    display: inline-block;
+    font-size: 11px;
+    background: #eef0ff;
+    color: #4338ca;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  /* Mini table (inside note items) */
+  .note-mini-table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 13.5px; }
+  .note-mini-table th, .note-mini-table td { padding: 6px 8px; border: 1px solid #e5e7eb; text-align: center; }
+  .note-mini-table th { background: #eef0ff; color: #3730a3; font-weight: 700; }
+
+  /* Table editor (inside note modal) */
+  .table-editor { background: #f9fafb; border-radius: 10px; padding: 10px; }
+  .table-editor-scroll { overflow-x: auto; }
+  .table-editor table { border-collapse: collapse; width: 100%; }
+  .table-editor th, .table-editor td { padding: 4px; border: 1px solid #e5e7eb; }
+  .table-editor input { padding: 6px 8px; font-size: 13px; border-radius: 6px; min-width: 90px; }
+  .table-editor-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .table-editor-actions button { flex: 1; padding: 8px; font-size: 13px; }
+  .col-remove-btn, .row-remove-btn {
+    background: #fee2e2; color: #ef4444; border: none; border-radius: 6px;
+    width: 24px; height: 24px; font-size: 13px; font-weight: 700; cursor: pointer; line-height: 1;
+  }
 
   /* Progress */
   .progress-bar {
@@ -347,15 +392,47 @@
   }
   .empty-state .icon { font-size: 60px; margin-bottom: 12px; }
 
+  /* Habit tracker */
+  .habit-date-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    border-radius: 14px;
+    padding: 16px 18px;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+  .habit-weekday { font-size: 19px; font-weight: 800; margin-bottom: 4px; }
+  .habit-gregorian { font-size: 14px; opacity: 0.95; }
+  .habit-hijri { font-size: 13px; opacity: 0.85; margin-top: 2px; }
+  .habit-day-nav { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .habit-view-toggle { display: flex; gap: 8px; margin-bottom: 16px; }
+  .habit-view-toggle button { flex: 1; font-size: 13px; padding: 9px 6px; }
+  .habit-view-toggle button.active { background: #667eea; color: #fff; }
+  table.habit-table th.day-col, table.habit-table td.day-col { min-width: 46px; font-size: 12px; }
+  table.habit-table th .day-col-name { display: block; font-size: 10px; font-weight: 500; opacity: 0.85; }
+  table.habit-table td.today-col { background: #eef0ff; }
+  .hijri-adjust-btn {
+    background: rgba(255,255,255,0.25);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    width: 22px; height: 22px;
+    font-size: 13px; font-weight: 700;
+    cursor: pointer;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .hijri-adjust-btn:hover { background: rgba(255,255,255,0.4); transform: none; }
+  .habit-day-title { margin-top: 6px; font-weight: 700; }
+
   .view-toggle { display: flex; gap: 8px; margin-bottom: 16px; }
   .view-toggle button { flex: 1; }
   .view-toggle button.active { background: #667eea; color: #fff; }
 
   .back-btn { margin-bottom: 16px; }
   .hint { font-size: 13px; color: #6b7280; margin-top: 6px; }
-  .show-more-link { display: inline-block; margin-top: 4px; color: #667eea; font-size: 13px; font-weight: 700; cursor: pointer; }
-  .show-more-link:hover { text-decoration: underline; }
-  .note-title { font-weight: 700; font-size: 15px; margin-bottom: 3px; color: #333; }
 
   /* Backup bar */
   .backup-bar {
@@ -373,6 +450,24 @@
 </head>
 <body>
 <div class="container" id="app"></div>
+
+<!-- Modal: New/Edit Worksheet -->
+<div class="modal-overlay" id="worksheetModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="worksheetModalTitle">ورقة عمل جديدة</div>
+      <button class="close-btn" onclick="closeModal('worksheetModal')">×</button>
+    </div>
+    <div class="form-group">
+      <label>اسم ورقة العمل</label>
+      <input type="text" id="worksheetName" placeholder="مثال: عملي، عائلتي، شخصي">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('worksheetModal')">إلغاء</button>
+      <button class="btn-primary" onclick="saveWorksheet()">حفظ</button>
+    </div>
+  </div>
+</div>
 
 <!-- Modal: New/Edit List -->
 <div class="modal-overlay" id="listModal">
@@ -405,11 +500,25 @@
         </div>
         <div class="type-option" id="typeOptionHabits" onclick="selectListType('habits')">
           <div style="font-size:26px">🕌</div>
-          <div style="font-weight:700">عادات وعبادات</div>
-          <div class="hint">لتتبع مهام يومية (عادات/عبادات) بعرض يومي، أسبوعي، أو شهري</div>
+          <div style="font-weight:700">تتبع العادات والعبادات</div>
+          <div class="hint">لمتابعة إنجاز مجموعة من المهام يوميًا</div>
         </div>
       </div>
       <p class="hint" id="typeLockedHint" style="display:none">🔒 لا يمكن تغيير نوع القائمة بعد إنشائها</p>
+    </div>
+    <div class="form-group" id="habitRangeGroup" style="display:none">
+      <label>الفترة الزمنية للتتبع (اختياري)</label>
+      <div style="display:flex;gap:8px">
+        <div style="flex:1">
+          <label class="hint" style="margin-bottom:4px">من تاريخ</label>
+          <input type="date" id="habitStartDate">
+        </div>
+        <div style="flex:1">
+          <label class="hint" style="margin-bottom:4px">إلى تاريخ</label>
+          <input type="date" id="habitEndDate">
+        </div>
+      </div>
+      <p class="hint">اتركها فارغة لتتبع بلا حدود. لن يمكنك تسجيل أيام بعد تاريخ النهاية.</p>
     </div>
     <div class="form-group">
       <label>اختر رمزًا</label>
@@ -471,8 +580,8 @@
       <button class="close-btn" onclick="closeModal('noteModal')">×</button>
     </div>
     <div class="form-group">
-      <label>العنوان (اختياري)</label>
-      <input type="text" id="noteTitle" placeholder="مثال: خطة الأسبوع">
+      <label>عنوان الملاحظة (اختياري)</label>
+      <input type="text" id="noteTitle" placeholder="مثال: أفكار اجتماع الفريق">
     </div>
     <div class="form-group">
       <label>نوع الملاحظة</label>
@@ -487,13 +596,8 @@
       <textarea id="noteText" rows="5" placeholder="اكتب ملاحظتك هنا..." style="resize:vertical"></textarea>
     </div>
     <div class="form-group" id="noteTableGroup" style="display:none">
-      <label>الجدول</label>
+      <label>محتوى الجدول</label>
       <div id="noteTableEditor"></div>
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <button type="button" class="btn-secondary" onclick="addNoteTableColumn()">+ عمود</button>
-        <button type="button" class="btn-secondary" onclick="addNoteTableRow()">+ صف</button>
-      </div>
-      <p class="hint">اضغط على أي خانة لتعديلها مباشرة</p>
     </div>
     <div class="modal-actions">
       <button class="btn-danger" id="deleteNoteBtn" onclick="deleteNote()" style="display:none;margin-left:auto">حذف</button>
@@ -642,6 +746,8 @@
 <script>
 // ============ State ============
 let data = loadData();
+let currentWorksheetId = null;
+let editingWorksheetId = null;
 let currentListId = null;
 let currentMonth = getCurrentMonth(); // YYYY-MM
 let viewMode = 'month'; // 'month' | 'table'
@@ -655,19 +761,17 @@ let selectedTaskIcon = '⭐';
 let selectedListType = 'todo';
 let selectedTaskInputType = 'checkbox';
 let taskDropdownOptions = [];
-let expandedNoteIds = new Set(); // note ids shown fully expanded (UI-only, not persisted)
-let noteTableData = { columns: [], rows: [] }; // working state while editing a table-kind note
-let currentDay = getTodayKey(); // YYYY-MM-DD, for habits day view
-let currentWeekAnchor = getTodayKey(); // any day inside the displayed week, for habits week view
-let currentHabitMonth = getCurrentMonth(); // YYYY-MM, for habits month view
-let habitViewMode = 'day'; // 'day' | 'week' | 'month'
+let noteExpandedIds = new Set();
+let noteTableData = { headers: ['العمود 1'], rows: [['']] };
+let currentHabitDate = getCurrentDateStr();
+let currentHabitWeekStart = getWeekStart(currentHabitDate);
+let currentHabitMonth = getCurrentMonth();
+let habitViewMode = 'card'; // 'card' | 'week' | 'month'
 
 const ICONS = ['📋','⭐','🕌','📖','💪','🏃','💧','🍎','💤','📚','💼','🎯','❤️','🌟','✨','🔥','💡','🎨','🎵','📝','🏠','👨‍👩‍👧','🚗','💰','📱','☕','🍽️','🧘','🌱','🎓','💊','🏋️'];
+const WEEKDAY_NAMES_SHORT = ['أحد','اثنين','ثلاثاء','أربعاء','خميس','جمعة','سبت'];
 
 const ARABIC_MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
-const ARABIC_WEEKDAYS = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت']; // index = Date#getDay()
-const ARABIC_WEEKDAYS_SHORT = ['أحد','اثنين','ثلاثاء','أربعاء','خميس','جمعة','سبت'];
-const HIJRI_MONTHS = ['محرم','صفر','ربيع الأول','ربيع الآخر','جمادى الأولى','جمادى الآخرة','رجب','شعبان','رمضان','شوال','ذو القعدة','ذو الحجة'];
 
 const INPUT_TYPE_LABELS = { checkbox: '✅ خانة اختيار', text: '📝 نص', number: '🔢 رقم', dropdown: '📋 قائمة' };
 
@@ -676,15 +780,92 @@ function getCurrentMonth() {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
 }
 
+// ============ Date helpers (Habit tracker) ============
+function pad2(n) { return String(n).padStart(2, '0'); }
+
+function getCurrentDateStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+function dateStrToDate(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function dateToDateStr(d) {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+function addDaysToDateStr(dateStr, n) {
+  const d = dateStrToDate(dateStr);
+  d.setDate(d.getDate() + n);
+  return dateToDateStr(d);
+}
+
+function getWeekStart(dateStr) {
+  // Week starts on Sunday
+  const d = dateStrToDate(dateStr);
+  d.setDate(d.getDate() - d.getDay());
+  return dateToDateStr(d);
+}
+
+function getWeekDates(weekStartStr) {
+  const dates = [];
+  for (let i = 0; i < 7; i++) dates.push(addDaysToDateStr(weekStartStr, i));
+  return dates;
+}
+
+function getMonthDates(monthStr) {
+  const [y, m] = monthStr.split('-').map(Number);
+  const days = new Date(y, m, 0).getDate();
+  const dates = [];
+  for (let i = 1; i <= days; i++) dates.push(`${y}-${pad2(m)}-${pad2(i)}`);
+  return dates;
+}
+
+function formatWeekdayName(dateStr) {
+  return dateStrToDate(dateStr).toLocaleDateString('ar-EG', { weekday: 'long' });
+}
+
+function formatWeekdayShort(dateStr) {
+  return WEEKDAY_NAMES_SHORT[dateStrToDate(dateStr).getDay()];
+}
+
+function formatGregorianFull(dateStr) {
+  return dateStrToDate(dateStr).toLocaleDateString('ar-EG', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function formatHijriFull(dateStr) {
+  try {
+    const d = dateStrToDate(dateStr);
+    d.setDate(d.getDate() + (data.hijriAdjustment || 0));
+    return d.toLocaleDateString('ar-SA-u-ca-islamic-umalqura', { day: 'numeric', month: 'long', year: 'numeric' });
+  } catch (e) {
+    return '';
+  }
+}
+
+function adjustHijriOffset(delta) {
+  let offset = (data.hijriAdjustment || 0) + delta;
+  if (offset > 2) offset = 2;
+  if (offset < -2) offset = -2;
+  data.hijriAdjustment = offset;
+  save();
+  render();
+}
+
 // ============ Persistence ============
-const CURRENT_VERSION = 4;
+const CURRENT_VERSION = 6;
 
 function migrateData(parsed) {
-  if (!parsed || !Array.isArray(parsed.lists)) parsed = { version: CURRENT_VERSION, lists: [] };
+  if (!parsed || typeof parsed !== 'object' || (!Array.isArray(parsed.lists) && !Array.isArray(parsed.worksheets))) {
+    parsed = { version: CURRENT_VERSION, worksheets: [] };
+  }
 
   // Migrate old data (v1: no "type"/"version", records had {completed})
   if (!parsed.version) {
-    parsed.lists.forEach(list => {
+    (parsed.lists || []).forEach(list => {
       list.type = list.type || 'todo';
       (list.tasks || []).forEach(t => { t.inputType = t.inputType || 'checkbox'; });
       Object.values(list.months || {}).forEach(monthObj => {
@@ -702,7 +883,7 @@ function migrateData(parsed) {
 
   // Migrate v2 -> v3: notes lists no longer live inside months; flatten into list.notes
   if (parsed.version < 3) {
-    parsed.lists.forEach(list => {
+    (parsed.lists || []).forEach(list => {
       if (list.type === 'notes') {
         const flat = [];
         Object.keys(list.months || {}).sort().forEach(m => {
@@ -727,7 +908,7 @@ function migrateData(parsed) {
   // Migrate v3 -> v4: formula entries used to hold one field/result each;
   // now a single entry holds one input number with results for every field.
   if (parsed.version < 4) {
-    parsed.lists.forEach(list => {
+    (parsed.lists || []).forEach(list => {
       if (list.type === 'formulas') {
         list.entries = (list.entries || []).map(e => {
           if (e.results) return e; // already in the new shape
@@ -744,6 +925,25 @@ function migrateData(parsed) {
     parsed.version = 4;
   }
 
+  // Migrate v4 -> v5: notes gained optional title/table kind (no structural change needed,
+  // new fields are simply absent on old notes, which render fine as-is).
+  if (parsed.version < 5) {
+    parsed.version = 5;
+  }
+
+  // Migrate v5 -> v6: introduce "worksheets" — each worksheet holds its own set of lists.
+  // Old flat data (parsed.lists) is wrapped into a single default worksheet so nothing is lost.
+  if (parsed.version < 6) {
+    if (Array.isArray(parsed.lists)) {
+      parsed.worksheets = [{ id: uid(), name: 'ورقة العمل الافتراضية', lists: parsed.lists }];
+      delete parsed.lists;
+    } else if (!Array.isArray(parsed.worksheets)) {
+      parsed.worksheets = [];
+    }
+    parsed.version = 6;
+  }
+
+  if (!Array.isArray(parsed.worksheets)) parsed.worksheets = [];
   return parsed;
 }
 
@@ -752,14 +952,23 @@ function loadData() {
   try { raw = localStorage.getItem('todoListsData'); } catch (e) { raw = null; }
   let parsed = null;
   try { parsed = raw ? JSON.parse(raw) : null; } catch (e) { parsed = null; }
-  if (!parsed || !Array.isArray(parsed.lists)) parsed = { version: CURRENT_VERSION, lists: [] };
+  if (!parsed || typeof parsed !== 'object') parsed = { version: CURRENT_VERSION, worksheets: [] };
   return migrateData(parsed);
+}
+
+// `data.lists` is a transient pointer to the *currently open* worksheet's lists array
+// (set in openWorksheet()). It must never be persisted directly, since it's just an alias
+// for data.worksheets[i].lists — persisting it too would duplicate that data in storage.
+function getSerializableData() {
+  const clone = { ...data };
+  delete clone.lists;
+  return clone;
 }
 
 function save() {
   data.lastSaved = new Date().toISOString();
   try {
-    localStorage.setItem('todoListsData', JSON.stringify(data));
+    localStorage.setItem('todoListsData', JSON.stringify(getSerializableData()));
     const info = document.getElementById('lastSavedInfo');
     if (info) info.textContent = 'آخر حفظ: ' + formatDateTime(data.lastSaved);
   } catch (e) {
@@ -785,80 +994,6 @@ const escapeAttr = escapeHtml;
 function formatMonth(m) {
   const [y, mo] = m.split('-');
   return `${ARABIC_MONTHS[parseInt(mo) - 1]} ${y}`;
-}
-
-// ============ Date helpers (for habits/worship tracker) ============
-function dayKeyFromDate(d) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-function getTodayKey() { return dayKeyFromDate(new Date()); }
-
-function dateFromDayKey(dayKey) {
-  const [y, m, d] = dayKey.split('-').map(Number);
-  return new Date(y, m - 1, d);
-}
-
-function shiftDay(dayKey, deltaDays) {
-  const d = dateFromDayKey(dayKey);
-  d.setDate(d.getDate() + deltaDays);
-  return dayKeyFromDate(d);
-}
-
-// Week is considered to start on Saturday (السبت) and end on Friday (الجمعة).
-function getWeekStartKey(dayKey) {
-  const d = dateFromDayKey(dayKey);
-  const dow = d.getDay(); // 0=Sun..6=Sat
-  const diffToSat = (dow + 1) % 7;
-  d.setDate(d.getDate() - diffToSat);
-  return dayKeyFromDate(d);
-}
-
-function getWeekDays(weekStartKey) {
-  const days = [];
-  for (let i = 0; i < 7; i++) days.push(shiftDay(weekStartKey, i));
-  return days;
-}
-
-function formatShortDate(dayKey) {
-  const [y, m, d] = dayKey.split('-').map(Number);
-  return `${d} ${ARABIC_MONTHS[m - 1]}`;
-}
-
-// Approximate Gregorian -> Hijri conversion (tabular/civil Islamic calendar).
-// Accurate to within ~1 day of the officially-announced Hijri date, which
-// depends on moon-sighting and can vary slightly by country/authority.
-function gregorianToHijri(date) {
-  const day = date.getDate();
-  const month = date.getMonth() + 1;
-  const year = date.getFullYear();
-
-  let jd = Math.floor((1461 * (year + 4800 + Math.floor((month - 14) / 12))) / 4)
-    + Math.floor((367 * (month - 2 - 12 * Math.floor((month - 14) / 12))) / 12)
-    - Math.floor((3 * Math.floor((year + 4900 + Math.floor((month - 14) / 12)) / 100)) / 4)
-    + day - 32075;
-
-  let l = jd - 1948440 + 10632;
-  const n = Math.floor((l - 1) / 10631);
-  l = l - 10631 * n + 354;
-  const j = Math.floor((10985 - l) / 5316) * Math.floor((50 * l) / 17719)
-    + Math.floor(l / 5670) * Math.floor((43 * l) / 15238);
-  l = l - Math.floor((30 - j) / 15) * Math.floor((17719 * j) / 50)
-    - Math.floor(j / 16) * Math.floor((15238 * j) / 43) + 29;
-  const hMonth = Math.floor((24 * l) / 709);
-  const hDay = l - Math.floor((709 * hMonth) / 24);
-  const hYear = 30 * n + j - 30;
-
-  return { day: hDay, month: hMonth, year: hYear };
-}
-
-function formatFullDate(dayKey) {
-  const d = dateFromDayKey(dayKey);
-  const weekday = ARABIC_WEEKDAYS[d.getDay()];
-  const hijri = gregorianToHijri(d);
-  const gregLabel = `${d.getDate()} ${ARABIC_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
-  const hijriLabel = `${hijri.day} ${HIJRI_MONTHS[hijri.month - 1]} ${hijri.year}هـ`;
-  return { weekday, gregLabel, hijriLabel };
 }
 
 // ============ Todo-list helpers ============
@@ -899,6 +1034,39 @@ function getNoteCount(list) {
   return (list.notes || []).length;
 }
 
+// ============ Habit-tracker helpers ============
+function ensureHabitDayData(list, dateStr, skipSave) {
+  if (!list.habitDays) list.habitDays = {};
+  if (!list.habitDays[dateStr]) list.habitDays[dateStr] = { records: {} };
+  if (!list.habitDays[dateStr].records) list.habitDays[dateStr].records = {};
+  (list.habitTasks || []).forEach(t => {
+    if (!list.habitDays[dateStr].records[t.id]) {
+      list.habitDays[dateStr].records[t.id] = { value: t.inputType === 'checkbox' ? false : '' };
+    }
+  });
+  if (!skipSave) save();
+}
+
+function getHabitDayPercent(list, dateStr) {
+  const tasks = list.habitTasks || [];
+  if (!tasks.length) return 0;
+  const dayData = (list.habitDays || {})[dateStr];
+  if (!dayData) return 0;
+  const completed = tasks.filter(t => isFilled(t, dayData.records?.[t.id])).length;
+  return Math.round((completed / tasks.length) * 100);
+}
+
+function getHabitDayStatus(list, dateStr) {
+  const tasks = list.habitTasks || [];
+  if (!tasks.length) return 'not-started';
+  const dayData = (list.habitDays || {})[dateStr];
+  if (!dayData) return 'not-started';
+  const completed = tasks.filter(t => isFilled(t, dayData.records?.[t.id])).length;
+  if (completed === 0) return 'not-started';
+  if (completed === tasks.length) return 'done';
+  return 'in-progress';
+}
+
 function formatNoteDate(note) {
   if (note.createdAt) {
     const d = new Date(note.createdAt);
@@ -916,15 +1084,17 @@ function statusLabel(s) {
 // ============ Render ============
 function render() {
   const app = document.getElementById('app');
-  if (!currentListId) {
+  if (!currentWorksheetId) {
+    renderWorksheetsView(app);
+  } else if (!currentListId) {
     renderListsView(app);
   } else {
     renderDetailView(app);
   }
 }
 
-function renderListsView(app) {
-  let html = `<h1>📋 قوائمي</h1>`;
+function renderWorksheetsView(app) {
+  let html = `<h1>🗂️ أوراق العمل</h1>`;
 
   html += `
     <div class="card">
@@ -943,13 +1113,58 @@ function renderListsView(app) {
     </div>
   `;
 
+  if (!data.worksheets.length) {
+    html += `
+      <div class="card">
+        <div class="empty-state">
+          <div class="icon">🗂️</div>
+          <p>لا توجد أوراق عمل بعد.</p>
+          <p>أنشئ أول ورقة عمل لتبدأ بإضافة قوائمك (مثل: عملي، عائلتي، شخصي).</p>
+          <br>
+          <button class="btn-primary" onclick="openNewWorksheetModal()">+ إنشاء ورقة عمل</button>
+        </div>
+      </div>`;
+  } else {
+    html += `<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h2 style="margin:0">اختر ورقة عمل</h2>
+        <button class="btn-primary" onclick="openNewWorksheetModal()">+ ورقة جديدة</button>
+      </div>`;
+    data.worksheets.forEach(ws => {
+      const count = (ws.lists || []).length;
+      html += `
+        <div class="list-item">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex:1;gap:10px;cursor:pointer" onclick="openWorksheet('${ws.id}')">
+            <div class="list-info">
+              <div class="list-icon">🗂️</div>
+              <div>
+                <div class="list-name">${escapeHtml(ws.name)}</div>
+                <div class="list-count">${count} قائمة</div>
+              </div>
+            </div>
+          </div>
+          <button class="btn-secondary" style="padding:8px 12px;flex-shrink:0" title="تعديل الاسم" onclick="event.stopPropagation(); openEditWorksheetModal('${ws.id}')">✏️</button>
+          <button class="btn-danger" style="padding:8px 12px;flex-shrink:0" title="حذف ورقة العمل" onclick="event.stopPropagation(); deleteWorksheet('${ws.id}')">🗑️</button>
+        </div>`;
+    });
+    html += `</div>`;
+  }
+  app.innerHTML = html;
+}
+
+function renderListsView(app) {
+  let html = `
+    <h1>📋 قوائمي</h1>
+    <button class="btn-secondary back-btn" onclick="goBackToWorksheets()">→ العودة لأوراق العمل</button>
+  `;
+
   if (!data.lists.length) {
     html += `
       <div class="card">
         <div class="empty-state">
           <div class="icon">📭</div>
           <p>ما عندك أي قائمة بعد.</p>
-          <p>أنشئ أول قائمة التزامات، ملاحظات، معادلات، أو عادات وعبادات لك.</p>
+          <p>أنشئ أول قائمة التزامات، ملاحظات، أو جدول معادلات لك.</p>
           <br>
           <button class="btn-primary" onclick="openNewListModal()">+ إنشاء قائمة</button>
         </div>
@@ -957,7 +1172,7 @@ function renderListsView(app) {
   } else {
     html += `<div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <h2 style="margin:0">قوائمك</h2>
+        <h2 style="margin:0">🗂️ ${escapeHtml((data.worksheets.find(w => w.id === currentWorksheetId) || {}).name || '')}</h2>
         <button class="btn-primary" onclick="openNewListModal()">+ قائمة جديدة</button>
       </div>`;
     data.lists.forEach((list, idx) => {
@@ -972,13 +1187,11 @@ function renderListsView(app) {
         subtitle = `${fieldCount} خانة · ${entryCount} إدخال`;
         badgeHtml = `<span class="status-badge status-formulas">🧮 معادلات</span>`;
       } else if (list.type === 'habits') {
-        const taskCount = (list.tasks || []).length;
-        const todayKey = getTodayKey();
-        const todayRecords = (list.days && list.days[todayKey] && list.days[todayKey].records) || {};
-        const doneToday = (list.tasks || []).filter(t => isFilled(t, todayRecords[t.id])).length;
-        const todayPercent = taskCount ? Math.round((doneToday / taskCount) * 100) : 0;
-        subtitle = `${taskCount} مهمة · اليوم: ${todayPercent}%`;
-        badgeHtml = `<span class="status-badge status-habits">🕌 عادات وعبادات</span>`;
+        const today = getCurrentDateStr();
+        const percent = getHabitDayPercent(list, today);
+        subtitle = `${(list.habitTasks || []).length} مهمة · اليوم: ${percent}%`;
+        const s = getHabitDayStatus(list, today);
+        badgeHtml = `<span class="status-badge status-habits">🕌 عادات: ${statusLabel(s)}</span>`;
       } else {
         const currentStatus = getMonthStatus(list, getCurrentMonth());
         const percent = getMonthPercent(list, getCurrentMonth());
@@ -1020,26 +1233,6 @@ function ensureMonthData(list, month) {
   save();
 }
 
-// ---- Habits/worship tracker day-data helpers ----
-function ensureDayData(list, dayKey) {
-  if (!list.days) list.days = {};
-  let changed = false;
-  if (!list.days[dayKey]) { list.days[dayKey] = { records: {} }; changed = true; }
-  list.tasks.forEach(t => {
-    if (!list.days[dayKey].records[t.id]) {
-      list.days[dayKey].records[t.id] = { value: t.inputType === 'checkbox' ? false : '' };
-      changed = true;
-    }
-  });
-  return changed;
-}
-
-function ensureDaysData(list, dayKeys) {
-  let changed = false;
-  dayKeys.forEach(d => { if (ensureDayData(list, d)) changed = true; });
-  if (changed) save();
-}
-
 function renderDetailView(app) {
   const list = data.lists.find(l => l.id === currentListId);
   if (!list) { currentListId = null; render(); return; }
@@ -1057,9 +1250,18 @@ function renderDetailView(app) {
     if (!list.entries) list.entries = [];
     html += renderFormulasView(list);
   } else if (list.type === 'habits') {
-    if (!list.tasks) list.tasks = [];
-    if (!list.days) list.days = {};
+    if (!list.habitTasks) list.habitTasks = [];
+    if (!list.habitDays) list.habitDays = {};
     html += renderHabitsView(list);
+    html += `
+      <div class="card">
+        <h2>📈 الإحصائيات اليومية</h2>
+        <p class="hint">اضغط على أي يوم للانتقال إليه · اضغط × لحذف بيانات ذلك اليوم</p>
+        <div class="stats-grid" style="margin-top:12px">
+          ${renderHabitStats(list)}
+        </div>
+      </div>
+    `;
   } else {
     ensureMonthData(list, currentMonth);
     const status = getMonthStatus(list, currentMonth);
@@ -1133,14 +1335,14 @@ function renderMonthView(list, status, percent, completed, isCurrentMonth) {
             <div class="icon">📝</div>
             <p>لا توجد التزامات بعد. أضف أول التزام!</p>
           </div>
-        ` : list.tasks.map((t, idx) => renderTask(list, t, idx, list.tasks.length, list.months[currentMonth].records[t.id])).join('')}
+        ` : list.tasks.map((t, idx) => renderTask(list, t, idx, list.tasks.length)).join('')}
       </div>
     </div>
   `;
 }
 
-function renderTask(list, task, idx, total, record) {
-  record = record || {};
+function renderTask(list, task, idx, total) {
+  const record = list.months[currentMonth].records[task.id] || {};
   const rawVal = record.value;
   const reorderHtml = `
     <div class="reorder-controls">
@@ -1209,154 +1411,6 @@ function renderTableView(list) {
   return html;
 }
 
-// ---- Habits/worship tracker rendering ----
-function renderHabitsView(list) {
-  const bodyHtml = habitViewMode === 'day' ? renderHabitDayView(list)
-    : habitViewMode === 'week' ? renderHabitWeekView(list)
-    : renderHabitMonthView(list);
-  return `
-    <div class="view-toggle">
-      <button class="${habitViewMode === 'day' ? 'active' : ''}" onclick="setHabitView('day')">📅 يوم بيوم</button>
-      <button class="${habitViewMode === 'week' ? 'active' : ''}" onclick="setHabitView('week')">🗓️ أسبوعي</button>
-      <button class="${habitViewMode === 'month' ? 'active' : ''}" onclick="setHabitView('month')">📊 شهري</button>
-    </div>
-    ${bodyHtml}
-  `;
-}
-
-function renderDayNav() {
-  return `
-    <div class="month-nav">
-      <button class="btn-secondary" onclick="prevHabitDay()">‹ السابق</button>
-      <button class="btn-primary" onclick="goToHabitToday()">اليوم</button>
-      <button class="btn-secondary" onclick="nextHabitDay()">التالي ›</button>
-    </div>
-  `;
-}
-
-function renderHabitDayView(list) {
-  ensureDaysData(list, [currentDay]);
-  const dateInfo = formatFullDate(currentDay);
-  const isToday = currentDay === getTodayKey();
-  const records = list.days[currentDay].records;
-  const completed = list.tasks.filter(t => isFilled(t, records[t.id])).length;
-  const percent = list.tasks.length ? Math.round((completed / list.tasks.length) * 100) : 0;
-  return `
-    <div class="card">
-      <div class="month-header">
-        <div>
-          <div class="month-title">${dateInfo.weekday} · ${dateInfo.gregLabel}</div>
-          <div class="hint" style="margin-top:2px">🌙 ${dateInfo.hijriLabel} (تاريخ هجري تقريبي)</div>
-          ${!isToday ? '<span class="status-badge" style="background:#e0e7ff;color:#3730a3;margin-top:6px;display:inline-block">‹› يوم آخر</span>' : ''}
-        </div>
-        ${renderDayNav()}
-      </div>
-
-      <div class="progress-bar"><div class="progress-fill" style="width:${percent}%"></div></div>
-      <div class="progress-text">${percent}% · ${completed} من ${list.tasks.length} مُنجزة</div>
-
-      <div style="margin-top:20px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-          <h3>العادات والعبادات</h3>
-          <button class="btn-primary" onclick="openNewTaskModal()">+ إضافة</button>
-        </div>
-        ${list.tasks.length === 0 ? `
-          <div class="empty-state">
-            <div class="icon">🕌</div>
-            <p>لا توجد مهام بعد. أضف أول عادة أو عبادة لتتبعها يوميًا!</p>
-          </div>
-        ` : list.tasks.map((t, idx) => renderTask(list, t, idx, list.tasks.length, records[t.id])).join('')}
-      </div>
-    </div>
-  `;
-}
-
-function renderWeekNav() {
-  return `
-    <div class="month-nav">
-      <button class="btn-secondary" onclick="prevHabitWeek()">‹ الأسبوع السابق</button>
-      <button class="btn-primary" onclick="goToHabitThisWeek()">هذا الأسبوع</button>
-      <button class="btn-secondary" onclick="nextHabitWeek()">الأسبوع التالي ›</button>
-    </div>
-  `;
-}
-
-function renderHabitWeekView(list) {
-  const weekStart = getWeekStartKey(currentWeekAnchor);
-  const days = getWeekDays(weekStart);
-  ensureDaysData(list, days);
-  const todayKey = getTodayKey();
-  let html = `<div class="card">
-    <div class="month-header">
-      <div class="month-title">${formatShortDate(days[0])} – ${formatShortDate(days[6])}</div>
-      ${renderWeekNav()}
-    </div>
-    <div class="table-wrapper"><table>
-      <thead><tr><th>المهمة</th>${days.map(d => {
-        const [, , dayNum] = d.split('-');
-        const wd = ARABIC_WEEKDAYS_SHORT[dateFromDayKey(d).getDay()];
-        return `<th style="${d === todayKey ? 'outline:2px solid #fff' : ''}">${wd}<br>${parseInt(dayNum)}</th>`;
-      }).join('')}</tr></thead>
-      <tbody>
-      ${list.tasks.length === 0
-        ? `<tr><td colspan="${days.length + 1}">لا توجد مهام بعد</td></tr>`
-        : list.tasks.map(t => {
-            const cells = days.map(d => {
-              const record = list.days[d].records[t.id];
-              const filled = isFilled(t, record);
-              const display = filled ? (t.inputType === 'checkbox' ? '✓' : escapeHtml(String(record.value))) : '—';
-              return `<td class="${filled ? 'completed-cell' : 'pending-cell'}">${display}</td>`;
-            }).join('');
-            return `<tr><td style="text-align:right;font-weight:600">${t.icon} ${escapeHtml(t.name)}</td>${cells}</tr>`;
-          }).join('')}
-      </tbody>
-    </table></div>
-  </div>`;
-  return html;
-}
-
-function renderHabitMonthNav() {
-  return `
-    <div class="month-nav">
-      <button class="btn-secondary" onclick="prevHabitMonth()">‹ السابق</button>
-      <button class="btn-primary" onclick="goToHabitThisMonth()">هذا الشهر</button>
-      <button class="btn-secondary" onclick="nextHabitMonth()">التالي ›</button>
-    </div>
-  `;
-}
-
-function renderHabitMonthView(list) {
-  const [y, m] = currentHabitMonth.split('-').map(Number);
-  const daysInMonth = new Date(y, m, 0).getDate();
-  const dayKeys = [];
-  for (let i = 1; i <= daysInMonth; i++) dayKeys.push(`${currentHabitMonth}-${String(i).padStart(2, '0')}`);
-  ensureDaysData(list, dayKeys);
-  const todayKey = getTodayKey();
-  let html = `<div class="card">
-    <div class="month-header">
-      <div class="month-title">${formatMonth(currentHabitMonth)}</div>
-      ${renderHabitMonthNav()}
-    </div>
-    <div class="table-wrapper"><table>
-      <thead><tr><th>المهمة</th>${dayKeys.map(d => `<th style="${d === todayKey ? 'outline:2px solid #fff' : ''}">${parseInt(d.split('-')[2])}</th>`).join('')}</tr></thead>
-      <tbody>
-      ${list.tasks.length === 0
-        ? `<tr><td colspan="${dayKeys.length + 1}">لا توجد مهام بعد</td></tr>`
-        : list.tasks.map(t => {
-            const cells = dayKeys.map(d => {
-              const record = list.days[d].records[t.id];
-              const filled = isFilled(t, record);
-              const display = filled ? (t.inputType === 'checkbox' ? '✓' : escapeHtml(String(record.value))) : '—';
-              return `<td class="${filled ? 'completed-cell' : 'pending-cell'}" style="padding:6px;font-size:12px">${display}</td>`;
-            }).join('');
-            return `<tr><td style="text-align:right;font-weight:600;white-space:nowrap">${t.icon} ${escapeHtml(t.name)}</td>${cells}</tr>`;
-          }).join('')}
-      </tbody>
-    </table></div>
-  </div>`;
-  return html;
-}
-
 // ---- Notes list rendering (flat, not tied to a month) ----
 function renderNotesView(list) {
   const notes = list.notes || [];
@@ -1376,7 +1430,7 @@ function renderNotesView(list) {
   `;
 }
 
-const NOTE_TRUNCATE_LEN = 220;
+const NOTE_TEXT_TRUNCATE_LENGTH = 220;
 
 function renderNote(note, idx, total) {
   const dateLabel = formatNoteDate(note);
@@ -1389,69 +1443,66 @@ function renderNote(note, idx, total) {
   const titleHtml = note.title ? `<div class="note-title">${escapeHtml(note.title)}</div>` : '';
 
   if (note.kind === 'table') {
+    const t = note.tableData || { headers: [], rows: [] };
+    const tableHtml = `
+      <table class="note-mini-table">
+        <thead><tr>${(t.headers || []).map(h => `<th>${escapeHtml(h)}</th>`).join('')}</tr></thead>
+        <tbody>${(t.rows || []).map(row => `<tr>${row.map(c => `<td>${escapeHtml(c)}</td>`).join('')}</tr>`).join('')}</tbody>
+      </table>
+    `;
     return `
       <div class="note-item" style="display:flex;align-items:flex-start;gap:12px">
         <div style="flex:1;cursor:pointer" onclick="openEditNoteModal('${note.id}')">
           <div class="note-time">🕒 ${escapeHtml(dateLabel)}</div>
+          <span class="note-kind-tag">📊 جدول</span>
           ${titleHtml}
-          ${renderNoteTableView(note)}
+          <div class="table-editor-scroll">${tableHtml}</div>
         </div>
         ${reorderHtml}
       </div>
     `;
   }
+
+  const isLong = (note.text || '').length > NOTE_TEXT_TRUNCATE_LENGTH;
+  const expanded = noteExpandedIds.has(note.id);
+  const showMoreHtml = isLong ? `<button class="note-show-more" onclick="event.stopPropagation(); toggleNoteExpanded('${note.id}')">${expanded ? 'عرض أقل ▲' : 'عرض المزيد ▼'}</button>` : '';
 
   if (note.kind === 'checkbox') {
     const checked = !!note.checked;
     return `
       <div class="note-item" style="display:flex;align-items:flex-start;gap:12px">
         <div class="task-check ${checked ? 'checked' : ''}" onclick="event.stopPropagation(); toggleNoteChecked('${note.id}')" style="margin-top:2px">${checked ? '✓' : ''}</div>
-        <div style="flex:1;cursor:pointer" onclick="openEditNoteModal('${note.id}')">
-          <div class="note-time">🕒 ${escapeHtml(dateLabel)}</div>
-          ${titleHtml}
-          ${renderNoteBody(note, checked)}
+        <div style="flex:1">
+          <div style="cursor:pointer" onclick="openEditNoteModal('${note.id}')">
+            <div class="note-time">🕒 ${escapeHtml(dateLabel)}</div>
+            ${titleHtml}
+            <div class="note-text ${isLong && !expanded ? 'clamped' : ''}" style="${checked ? 'text-decoration:line-through;color:#9ca3af' : ''}">${escapeHtml(note.text)}</div>
+          </div>
+          ${showMoreHtml}
         </div>
         ${reorderHtml}
       </div>
     `;
   }
+
   return `
     <div class="note-item" style="display:flex;align-items:flex-start;gap:12px">
-      <div style="flex:1;cursor:pointer" onclick="openEditNoteModal('${note.id}')">
-        <div class="note-time">🕒 ${escapeHtml(dateLabel)}</div>
-        ${titleHtml}
-        ${renderNoteBody(note, false)}
+      <div style="flex:1">
+        <div style="cursor:pointer" onclick="openEditNoteModal('${note.id}')">
+          <div class="note-time">🕒 ${escapeHtml(dateLabel)}</div>
+          ${titleHtml}
+          <div class="note-text ${isLong && !expanded ? 'clamped' : ''}">${escapeHtml(note.text)}</div>
+        </div>
+        ${showMoreHtml}
       </div>
       ${reorderHtml}
     </div>
   `;
 }
 
-function renderNoteBody(note, strikethrough) {
-  const text = note.text || '';
-  const expanded = expandedNoteIds.has(note.id);
-  const isLong = text.length > NOTE_TRUNCATE_LEN;
-  const shown = (isLong && !expanded) ? text.slice(0, NOTE_TRUNCATE_LEN).trimEnd() + '…' : text;
-  return `
-    <div class="note-text" style="${strikethrough ? 'text-decoration:line-through;color:#9ca3af' : ''}">${escapeHtml(shown)}</div>
-    ${isLong ? `<span class="show-more-link" onclick="event.stopPropagation(); toggleNoteExpanded('${note.id}')">${expanded ? '▲ عرض أقل' : '▼ عرض المزيد'}</span>` : ''}
-  `;
-}
-
-function renderNoteTableView(note) {
-  const t = note.table || { columns: [], rows: [] };
-  return `
-    <div class="table-wrapper" style="margin-top:6px">
-      <table>
-        <thead><tr>${t.columns.map(c => `<th>${escapeHtml(c)}</th>`).join('')}</tr></thead>
-        <tbody>${t.rows.map(r => `<tr>${r.map(cell => `<td>${escapeHtml(cell || '—')}</td>`).join('')}</tr>`).join('')}</tbody>
-      </table>
-    </div>
-  `;
-}
-
-function toggleNoteExpanded(id) {
-  if (expandedNoteIds.has(id)) expandedNoteIds.delete(id); else expandedNoteIds.add(id);
+function toggleNoteExpanded(noteId) {
+  if (noteExpandedIds.has(noteId)) noteExpandedIds.delete(noteId);
+  else noteExpandedIds.add(noteId);
   render();
 }
 
@@ -1472,6 +1523,43 @@ function renderStats(list) {
       </div>
     `;
   }).join('');
+}
+
+function renderHabitStats(list) {
+  const dates = Object.keys(list.habitDays || {}).sort();
+  if (!dates.length) return '<p style="color:#6b7280">لا توجد بيانات بعد</p>';
+
+  return dates.map(d => {
+    const p = getHabitDayPercent(list, d);
+    const s = getHabitDayStatus(list, d);
+    const isCurrent = d === currentHabitDate;
+    const dd = dateStrToDate(d);
+    return `
+      <div class="stat-card ${s} ${isCurrent ? 'current' : ''}" onclick="goToHabitDay('${d}')" title="${escapeAttr(formatGregorianFull(d))}">
+        <div class="stat-delete" onclick="event.stopPropagation(); deleteHabitDayData('${d}')" title="حذف بيانات هذا اليوم">×</div>
+        <div class="stat-month">${dd.getDate()}/${dd.getMonth() + 1}</div>
+        <div class="stat-percent">${p}%</div>
+        <div style="font-size:11px;color:#6b7280">${statusLabel(s)}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function goToHabitDay(d) {
+  currentHabitDate = d;
+  currentHabitWeekStart = getWeekStart(d);
+  currentHabitMonth = d.slice(0, 7);
+  habitViewMode = 'card';
+  render();
+}
+
+function deleteHabitDayData(d) {
+  const list = data.lists.find(l => l.id === currentListId);
+  if (!confirm(`هل أنت متأكد من حذف كل بيانات يوم ${formatGregorianFull(d)}؟ لا يمكن التراجع عن هذا الإجراء.`)) return;
+  delete list.habitDays[d];
+  if (d === currentHabitDate) currentHabitDate = getCurrentDateStr();
+  save();
+  render();
 }
 
 // ---- Formulas list rendering ----
@@ -1560,6 +1648,211 @@ function renderEntry(entry, idx, total) {
   `;
 }
 
+// ---- Habit tracker rendering ----
+function renderHabitsView(list) {
+  const toggle = `
+    <div class="habit-view-toggle">
+      <button class="${habitViewMode === 'card' ? 'active' : ''}" onclick="setHabitView('card')">🗓️ بطاقات يومية</button>
+      <button class="${habitViewMode === 'week' ? 'active' : ''}" onclick="setHabitView('week')">📅 جدول أسبوعي</button>
+      <button class="${habitViewMode === 'month' ? 'active' : ''}" onclick="setHabitView('month')">📊 جدول شهري</button>
+    </div>
+  `;
+  let body;
+  if (habitViewMode === 'week') body = renderHabitWeekView(list);
+  else if (habitViewMode === 'month') body = renderHabitMonthView(list);
+  else body = renderHabitCardView(list);
+  return toggle + body;
+}
+
+function renderHabitCardView(list) {
+  ensureHabitDayData(list, currentHabitDate);
+  const tasks = list.habitTasks || [];
+  const percent = getHabitDayPercent(list, currentHabitDate);
+  const dayData = list.habitDays[currentHabitDate];
+  const completed = tasks.filter(t => isFilled(t, dayData.records[t.id])).length;
+  const isToday = currentHabitDate === getCurrentDateStr();
+  const atStart = !!(list.habitStartDate && currentHabitDate <= list.habitStartDate);
+  const atEnd = !!(list.habitEndDate && currentHabitDate >= list.habitEndDate);
+  const rangeHint = (list.habitStartDate || list.habitEndDate)
+    ? `<p class="hint" style="text-align:center;margin-top:8px">📆 فترة التتبع: ${list.habitStartDate ? formatGregorianFull(list.habitStartDate) : 'بلا بداية'} → ${list.habitEndDate ? formatGregorianFull(list.habitEndDate) : 'بلا نهاية'}</p>`
+    : '';
+  const hijriOffset = data.hijriAdjustment || 0;
+  return `
+    <div class="card">
+      <div class="habit-date-header">
+        <div class="habit-weekday">${formatWeekdayName(currentHabitDate)}${isToday ? ' · اليوم' : ''}</div>
+        <div class="habit-gregorian">📅 ${formatGregorianFull(currentHabitDate)}</div>
+        <div class="habit-hijri">
+          🌙 ${formatHijriFull(currentHabitDate)}
+          <button class="hijri-adjust-btn" onclick="adjustHijriOffset(-1)" title="تأخير التقويم الهجري يومًا">−</button>
+          <button class="hijri-adjust-btn" onclick="adjustHijriOffset(1)" title="تقديم التقويم الهجري يومًا">+</button>
+          ${hijriOffset ? `<span style="font-size:11px;opacity:0.85">(${hijriOffset > 0 ? '+' : ''}${hijriOffset} يوم لمطابقة رؤية بلدك)</span>` : ''}
+        </div>
+        ${dayData.title ? `<div class="habit-day-title">📌 ${escapeHtml(dayData.title)}</div>` : ''}
+      </div>
+      <div class="habit-day-nav">
+        <button class="btn-secondary" onclick="prevHabitDay()" ${atStart ? 'disabled' : ''}>‹ اليوم السابق</button>
+        <button class="btn-primary" onclick="goToTodayHabit()">اليوم</button>
+        <button class="btn-secondary" onclick="nextHabitDay()" ${atEnd ? 'disabled' : ''}>اليوم التالي ›</button>
+      </div>
+      ${rangeHint}
+      <div class="form-group" style="margin-top:14px">
+        <label>عنوان اليوم (اختياري)</label>
+        <input type="text" value="${escapeAttr(dayData.title || '')}" placeholder="مثال: يوم مميز، اليوم الخامس من رمضان..." onchange="setHabitDayTitle(this.value)">
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${percent}%"></div></div>
+      <div class="progress-text">${percent}% · ${completed} من ${tasks.length} مهام منجزة</div>
+      <div style="margin-top:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <h3>المهام اليومية</h3>
+          <button class="btn-primary" onclick="openNewTaskModal()">+ إضافة</button>
+        </div>
+        ${tasks.length === 0 ? `
+          <div class="empty-state">
+            <div class="icon">🕌</div>
+            <p>لا توجد مهام بعد. أضف أول مهمة يومية!</p>
+          </div>
+        ` : tasks.map((t, idx) => renderHabitTask(list, t, idx, tasks.length)).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderHabitTask(list, task, idx, total) {
+  const record = list.habitDays[currentHabitDate].records[task.id] || {};
+  const rawVal = record.value;
+  const reorderHtml = `
+    <div class="reorder-controls">
+      <button class="reorder-btn" onclick="event.stopPropagation(); moveHabitTask(${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>▲</button>
+      <button class="reorder-btn" onclick="event.stopPropagation(); moveHabitTask(${idx}, 1)" ${idx === total - 1 ? 'disabled' : ''}>▼</button>
+    </div>
+  `;
+
+  if (task.inputType === 'checkbox') {
+    const checked = rawVal === true;
+    return `
+      <div class="task-item">
+        <div class="task-check ${checked ? 'checked' : ''}" onclick="toggleHabitCheckbox('${task.id}')">${checked ? '✓' : ''}</div>
+        <div class="task-content" onclick="openEditTaskModal('${task.id}')">
+          <div class="task-name ${checked ? 'completed' : ''}">${task.icon} ${escapeHtml(task.name)}</div>
+        </div>
+        ${reorderHtml}
+      </div>
+    `;
+  }
+
+  const safeVal = (typeof rawVal === 'boolean') ? '' : rawVal;
+  let controlHtml = '';
+  if (task.inputType === 'text') {
+    controlHtml = `<input type="text" class="task-value-input" value="${escapeAttr(safeVal || '')}" placeholder="اكتب هنا..." onchange="setHabitTaskValue('${task.id}', this.value)">`;
+  } else if (task.inputType === 'number') {
+    controlHtml = `<input type="number" class="task-value-input" value="${safeVal === undefined || safeVal === null ? '' : safeVal}" placeholder="0" onchange="setHabitTaskValue('${task.id}', this.value)">`;
+  } else if (task.inputType === 'dropdown') {
+    const opts = task.options || [];
+    controlHtml = `<select class="task-value-input" onchange="setHabitTaskValue('${task.id}', this.value)">
+       <option value="">اختر...</option>
+       ${opts.map(o => `<option value="${escapeAttr(o)}" ${safeVal === o ? 'selected' : ''}>${escapeHtml(o)}</option>`).join('')}
+    </select>`;
+  }
+
+  return `
+    <div class="task-item" style="align-items:flex-start;flex-direction:column;gap:8px">
+      <div style="display:flex;width:100%;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div class="task-name" style="cursor:pointer" onclick="openEditTaskModal('${task.id}')">${task.icon} ${escapeHtml(task.name)}</div>
+        ${reorderHtml}
+      </div>
+      <div class="task-value-row">${controlHtml}</div>
+    </div>
+  `;
+}
+
+function renderHabitWeekView(list) {
+  const dates = getWeekDates(currentHabitWeekStart);
+  dates.forEach(d => ensureHabitDayData(list, d, true));
+  save();
+  const tasks = list.habitTasks || [];
+  const today = getCurrentDateStr();
+  let html = `<div class="card">
+    <div class="habit-day-nav">
+      <button class="btn-secondary" onclick="prevHabitWeek()">‹ الأسبوع السابق</button>
+      <button class="btn-primary" onclick="goToCurrentHabitWeek()">هذا الأسبوع</button>
+      <button class="btn-secondary" onclick="nextHabitWeek()">الأسبوع التالي ›</button>
+    </div>
+    <div class="table-wrapper"><table class="habit-table">
+      <thead><tr><th>المهمة</th>`;
+  dates.forEach(d => {
+    const dd = dateStrToDate(d);
+    html += `<th class="day-col ${d === today ? 'today-col' : ''}">${formatWeekdayShort(d)}<span class="day-col-name">${dd.getDate()}/${dd.getMonth() + 1}</span></th>`;
+  });
+  html += `</tr></thead><tbody>`;
+  if (!tasks.length) {
+    html += `<tr><td colspan="${dates.length + 1}" style="padding:20px;color:#6b7280">لا توجد مهام بعد</td></tr>`;
+  } else {
+    tasks.forEach(t => {
+      html += `<tr><td style="text-align:right;font-weight:600">${t.icon} ${escapeHtml(t.name)}</td>`;
+      dates.forEach(d => {
+        const record = list.habitDays[d]?.records?.[t.id];
+        const filled = isFilled(t, record);
+        let display = '—';
+        if (filled) display = t.inputType === 'checkbox' ? '✓' : escapeHtml(String(record.value));
+        html += `<td class="day-col ${filled ? 'completed-cell' : 'pending-cell'} ${d === today ? 'today-col' : ''}">${display}</td>`;
+      });
+      html += `</tr>`;
+    });
+  }
+  html += `</tbody></table></div>
+    <div style="margin-top:14px;display:flex;justify-content:flex-end">
+      <button class="btn-primary" onclick="openNewTaskModal()">+ إضافة مهمة</button>
+    </div>
+  </div>`;
+  return html;
+}
+
+function renderHabitMonthView(list) {
+  const dates = getMonthDates(currentHabitMonth);
+  dates.forEach(d => ensureHabitDayData(list, d, true));
+  save();
+  const tasks = list.habitTasks || [];
+  const today = getCurrentDateStr();
+  let html = `<div class="card">
+    <div class="month-header">
+      <div class="month-title">${formatMonth(currentHabitMonth)}</div>
+      <div class="month-nav">
+        <button class="btn-secondary" onclick="prevHabitMonth()">‹ السابق</button>
+        <button class="btn-primary" onclick="goToCurrentHabitMonth()">الشهر الحالي</button>
+        <button class="btn-secondary" onclick="nextHabitMonth()">التالي ›</button>
+      </div>
+    </div>
+    <div class="table-wrapper"><table class="habit-table">
+      <thead><tr><th>المهمة</th>`;
+  dates.forEach(d => {
+    const dd = dateStrToDate(d);
+    html += `<th class="day-col ${d === today ? 'today-col' : ''}">${dd.getDate()}</th>`;
+  });
+  html += `</tr></thead><tbody>`;
+  if (!tasks.length) {
+    html += `<tr><td colspan="${dates.length + 1}" style="padding:20px;color:#6b7280">لا توجد مهام بعد</td></tr>`;
+  } else {
+    tasks.forEach(t => {
+      html += `<tr><td style="text-align:right;font-weight:600">${t.icon} ${escapeHtml(t.name)}</td>`;
+      dates.forEach(d => {
+        const record = list.habitDays[d]?.records?.[t.id];
+        const filled = isFilled(t, record);
+        let display = '—';
+        if (filled) display = t.inputType === 'checkbox' ? '✓' : escapeHtml(String(record.value));
+        html += `<td class="day-col ${filled ? 'completed-cell' : 'pending-cell'} ${d === today ? 'today-col' : ''}">${display}</td>`;
+      });
+      html += `</tr>`;
+    });
+  }
+  html += `</tbody></table></div>
+    <div style="margin-top:14px;display:flex;justify-content:flex-end">
+      <button class="btn-primary" onclick="openNewTaskModal()">+ إضافة مهمة</button>
+    </div>
+  </div>`;
+  return html;
+}
+
 // ============ Actions ============
 function moveList(index, direction) {
   const newIndex = index + direction;
@@ -1575,7 +1868,8 @@ function deleteList(id) {
   const list = data.lists.find(l => l.id === id);
   if (!list) return;
   if (!confirm(`هل أنت متأكد من حذف القائمة "${list.name}"؟ سيتم حذف كل بياناتها (الالتزامات/الملاحظات/المعادلات والإدخالات) نهائيًا ولا يمكن التراجع عن هذا الإجراء.`)) return;
-  data.lists = data.lists.filter(l => l.id !== id);
+  const idx = data.lists.findIndex(l => l.id === id);
+  if (idx > -1) data.lists.splice(idx, 1);
   if (currentListId === id) currentListId = null;
   save();
   render();
@@ -1585,15 +1879,83 @@ function openList(id) {
   currentListId = id;
   currentMonth = getCurrentMonth();
   viewMode = 'month';
-  currentDay = getTodayKey();
-  currentWeekAnchor = getTodayKey();
-  currentHabitMonth = getCurrentMonth();
-  habitViewMode = 'day';
+  currentHabitDate = getCurrentDateStr();
+  const list = data.lists.find(l => l.id === id);
+  if (list && list.type === 'habits') {
+    if (list.habitStartDate && currentHabitDate < list.habitStartDate) currentHabitDate = list.habitStartDate;
+    if (list.habitEndDate && currentHabitDate > list.habitEndDate) currentHabitDate = list.habitEndDate;
+  }
+  currentHabitWeekStart = getWeekStart(currentHabitDate);
+  currentHabitMonth = currentHabitDate.slice(0, 7);
+  habitViewMode = 'card';
   render();
 }
 
 function goBack() { currentListId = null; render(); }
 function setView(v) { viewMode = v; render(); }
+
+// ---- Worksheets ----
+function openWorksheet(id) {
+  const ws = data.worksheets.find(w => w.id === id);
+  if (!ws) return;
+  if (!ws.lists) ws.lists = [];
+  currentWorksheetId = id;
+  data.lists = ws.lists;
+  currentListId = null;
+  render();
+}
+
+function goBackToWorksheets() {
+  currentWorksheetId = null;
+  currentListId = null;
+  data.lists = undefined;
+  render();
+}
+
+function openNewWorksheetModal() {
+  editingWorksheetId = null;
+  document.getElementById('worksheetModalTitle').textContent = 'ورقة عمل جديدة';
+  document.getElementById('worksheetName').value = '';
+  openModal('worksheetModal');
+}
+
+function openEditWorksheetModal(id) {
+  const ws = data.worksheets.find(w => w.id === id);
+  if (!ws) return;
+  editingWorksheetId = id;
+  document.getElementById('worksheetModalTitle').textContent = 'تعديل اسم ورقة العمل';
+  document.getElementById('worksheetName').value = ws.name;
+  openModal('worksheetModal');
+}
+
+function saveWorksheet() {
+  const name = document.getElementById('worksheetName').value.trim();
+  if (!name) { alert('أدخل اسم ورقة العمل'); return; }
+  if (editingWorksheetId) {
+    const ws = data.worksheets.find(w => w.id === editingWorksheetId);
+    ws.name = name;
+  } else {
+    data.worksheets.push({ id: uid(), name, lists: [] });
+  }
+  save();
+  closeModal('worksheetModal');
+  render();
+}
+
+function deleteWorksheet(id) {
+  const ws = data.worksheets.find(w => w.id === id);
+  if (!ws) return;
+  if (!confirm(`هل أنت متأكد من حذف ورقة العمل "${ws.name}"؟ سيتم حذف كل قوائمها وبياناتها نهائيًا ولا يمكن التراجع عن هذا الإجراء.`)) return;
+  const idx = data.worksheets.findIndex(w => w.id === id);
+  if (idx > -1) data.worksheets.splice(idx, 1);
+  if (currentWorksheetId === id) {
+    currentWorksheetId = null;
+    currentListId = null;
+    data.lists = undefined;
+  }
+  save();
+  render();
+}
 
 function prevMonth() {
   const [y, m] = currentMonth.split('-').map(Number);
@@ -1612,32 +1974,87 @@ function nextMonth() {
 function goToCurrentMonth() { currentMonth = getCurrentMonth(); render(); }
 function goToMonth(m) { currentMonth = m; viewMode = 'month'; render(); }
 
-// ---- Habits/worship tracker navigation ----
-function setHabitView(v) { habitViewMode = v; render(); }
+// ---- Habit tracker navigation & actions ----
+function setHabitView(mode) { habitViewMode = mode; render(); }
 
-function prevHabitDay() { currentDay = shiftDay(currentDay, -1); render(); }
-function nextHabitDay() { currentDay = shiftDay(currentDay, 1); render(); }
-function goToHabitToday() { currentDay = getTodayKey(); render(); }
+function prevHabitDay() {
+  const list = data.lists.find(l => l.id === currentListId);
+  const newDate = addDaysToDateStr(currentHabitDate, -1);
+  if (list && list.habitStartDate && newDate < list.habitStartDate) return;
+  currentHabitDate = newDate;
+  render();
+}
+function nextHabitDay() {
+  const list = data.lists.find(l => l.id === currentListId);
+  const newDate = addDaysToDateStr(currentHabitDate, 1);
+  if (list && list.habitEndDate && newDate > list.habitEndDate) return;
+  currentHabitDate = newDate;
+  render();
+}
+function goToTodayHabit() {
+  const list = data.lists.find(l => l.id === currentListId);
+  let today = getCurrentDateStr();
+  if (list && list.habitStartDate && today < list.habitStartDate) today = list.habitStartDate;
+  if (list && list.habitEndDate && today > list.habitEndDate) today = list.habitEndDate;
+  currentHabitDate = today;
+  render();
+}
 
-function prevHabitWeek() { currentWeekAnchor = shiftDay(currentWeekAnchor, -7); render(); }
-function nextHabitWeek() { currentWeekAnchor = shiftDay(currentWeekAnchor, 7); render(); }
-function goToHabitThisWeek() { currentWeekAnchor = getTodayKey(); render(); }
+function setHabitDayTitle(val) {
+  const list = data.lists.find(l => l.id === currentListId);
+  ensureHabitDayData(list, currentHabitDate, true);
+  list.habitDays[currentHabitDate].title = val.trim();
+  save();
+  render();
+}
+
+function prevHabitWeek() { currentHabitWeekStart = addDaysToDateStr(currentHabitWeekStart, -7); render(); }
+function nextHabitWeek() { currentHabitWeekStart = addDaysToDateStr(currentHabitWeekStart, 7); render(); }
+function goToCurrentHabitWeek() { currentHabitWeekStart = getWeekStart(getCurrentDateStr()); render(); }
 
 function prevHabitMonth() {
   const [y, m] = currentHabitMonth.split('-').map(Number);
   const d = new Date(y, m - 2, 1);
-  currentHabitMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  currentHabitMonth = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
   render();
 }
-
 function nextHabitMonth() {
   const [y, m] = currentHabitMonth.split('-').map(Number);
   const d = new Date(y, m, 1);
-  currentHabitMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  currentHabitMonth = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
+  render();
+}
+function goToCurrentHabitMonth() { currentHabitMonth = getCurrentMonth(); render(); }
+
+function moveHabitTask(index, direction) {
+  const list = data.lists.find(l => l.id === currentListId);
+  const newIndex = index + direction;
+  if (newIndex < 0 || newIndex >= list.habitTasks.length) return;
+  const tmp = list.habitTasks[index];
+  list.habitTasks[index] = list.habitTasks[newIndex];
+  list.habitTasks[newIndex] = tmp;
+  save();
   render();
 }
 
-function goToHabitThisMonth() { currentHabitMonth = getCurrentMonth(); render(); }
+function toggleHabitCheckbox(taskId) {
+  const list = data.lists.find(l => l.id === currentListId);
+  ensureHabitDayData(list, currentHabitDate, true);
+  if (!list.habitDays[currentHabitDate].records[taskId]) list.habitDays[currentHabitDate].records[taskId] = { value: false };
+  list.habitDays[currentHabitDate].records[taskId].value = !list.habitDays[currentHabitDate].records[taskId].value;
+  save();
+  render();
+}
+
+function setHabitTaskValue(taskId, val) {
+  const list = data.lists.find(l => l.id === currentListId);
+  const task = list.habitTasks.find(t => t.id === taskId);
+  ensureHabitDayData(list, currentHabitDate, true);
+  if (!list.habitDays[currentHabitDate].records[taskId]) list.habitDays[currentHabitDate].records[taskId] = {};
+  list.habitDays[currentHabitDate].records[taskId].value = (task.inputType === 'number' && val !== '') ? Number(val) : val;
+  save();
+  render();
+}
 
 function deleteMonthData(month) {
   const list = data.lists.find(l => l.id === currentListId);
@@ -1678,24 +2095,10 @@ function moveField(index, direction) {
   render();
 }
 
-// Returns the current records bucket for a list, based on its type
-// ('habits' tracks per-day records, everything else tracks per-month records).
-function getRecordsBucket(list) {
-  if (list.type === 'habits') {
-    if (!list.days) list.days = {};
-    if (!list.days[currentDay]) list.days[currentDay] = { records: {} };
-    return list.days[currentDay].records;
-  }
-  if (!list.months) list.months = {};
-  if (!list.months[currentMonth]) list.months[currentMonth] = { records: {} };
-  return list.months[currentMonth].records;
-}
-
 function toggleCheckbox(taskId) {
   const list = data.lists.find(l => l.id === currentListId);
-  const records = getRecordsBucket(list);
-  if (!records[taskId]) records[taskId] = { value: false };
-  records[taskId].value = !records[taskId].value;
+  if (!list.months[currentMonth].records[taskId]) list.months[currentMonth].records[taskId] = { value: false };
+  list.months[currentMonth].records[taskId].value = !list.months[currentMonth].records[taskId].value;
   save();
   render();
 }
@@ -1703,9 +2106,8 @@ function toggleCheckbox(taskId) {
 function setTaskValue(taskId, val) {
   const list = data.lists.find(l => l.id === currentListId);
   const task = list.tasks.find(t => t.id === taskId);
-  const records = getRecordsBucket(list);
-  if (!records[taskId]) records[taskId] = {};
-  records[taskId].value = (task.inputType === 'number' && val !== '') ? Number(val) : val;
+  if (!list.months[currentMonth].records[taskId]) list.months[currentMonth].records[taskId] = {};
+  list.months[currentMonth].records[taskId].value = (task.inputType === 'number' && val !== '') ? Number(val) : val;
   save();
   render();
 }
@@ -1720,6 +2122,8 @@ function openNewListModal() {
   selectedListIcon = '📋';
   document.getElementById('listModalTitle').textContent = 'قائمة جديدة';
   document.getElementById('listName').value = '';
+  document.getElementById('habitStartDate').value = '';
+  document.getElementById('habitEndDate').value = '';
   renderIconPicker('listIconPicker', ICONS, selectedListIcon, (icon) => { selectedListIcon = icon; });
   document.getElementById('typeOptionTodo').classList.remove('locked');
   document.getElementById('typeOptionNotes').classList.remove('locked');
@@ -1736,6 +2140,8 @@ function openEditListModal(id) {
   selectedListIcon = list.icon;
   document.getElementById('listModalTitle').textContent = 'تعديل القائمة';
   document.getElementById('listName').value = list.name;
+  document.getElementById('habitStartDate').value = list.habitStartDate || '';
+  document.getElementById('habitEndDate').value = list.habitEndDate || '';
   renderIconPicker('listIconPicker', ICONS, selectedListIcon, (icon) => { selectedListIcon = icon; });
   document.getElementById('typeOptionTodo').classList.add('locked');
   document.getElementById('typeOptionNotes').classList.add('locked');
@@ -1757,15 +2163,26 @@ function markSelectedType(type) {
   document.getElementById('typeOptionNotes').classList.toggle('selected', type === 'notes');
   document.getElementById('typeOptionFormulas').classList.toggle('selected', type === 'formulas');
   document.getElementById('typeOptionHabits').classList.toggle('selected', type === 'habits');
+  document.getElementById('habitRangeGroup').style.display = type === 'habits' ? 'block' : 'none';
 }
 
 function saveList() {
   const name = document.getElementById('listName').value.trim();
   if (!name) { alert('أدخل اسم القائمة'); return; }
+  const habitStart = document.getElementById('habitStartDate').value || undefined;
+  const habitEnd = document.getElementById('habitEndDate').value || undefined;
+  if (habitStart && habitEnd && habitStart > habitEnd) {
+    alert('تاريخ البداية يجب أن يكون قبل تاريخ النهاية');
+    return;
+  }
   if (editingListId) {
     const list = data.lists.find(l => l.id === editingListId);
     list.name = name;
     list.icon = selectedListIcon;
+    if (list.type === 'habits') {
+      list.habitStartDate = habitStart;
+      list.habitEndDate = habitEnd;
+    }
   } else {
     let newList;
     if (selectedListType === 'notes') {
@@ -1773,7 +2190,7 @@ function saveList() {
     } else if (selectedListType === 'formulas') {
       newList = { id: uid(), name, icon: selectedListIcon, type: 'formulas', fields: [], entries: [] };
     } else if (selectedListType === 'habits') {
-      newList = { id: uid(), name, icon: selectedListIcon, type: 'habits', tasks: [], days: {} };
+      newList = { id: uid(), name, icon: selectedListIcon, type: 'habits', habitTasks: [], habitDays: {}, habitStartDate: habitStart, habitEndDate: habitEnd };
     } else {
       newList = { id: uid(), name, icon: selectedListIcon, type: 'todo', tasks: [], months: {} };
     }
@@ -1802,7 +2219,8 @@ function openNewTaskModal() {
 
 function openEditTaskModal(taskId) {
   const list = data.lists.find(l => l.id === currentListId);
-  const task = list.tasks.find(t => t.id === taskId);
+  const taskArr = list.type === 'habits' ? list.habitTasks : list.tasks;
+  const task = taskArr.find(t => t.id === taskId);
   editingTaskId = taskId;
   selectedTaskIcon = task.icon;
   selectedTaskInputType = task.inputType || 'checkbox';
@@ -1852,19 +2270,23 @@ function saveTask() {
     return;
   }
   const list = data.lists.find(l => l.id === currentListId);
+  const isHabit = list.type === 'habits';
+  if (isHabit && !list.habitTasks) list.habitTasks = [];
+  const taskArr = isHabit ? list.habitTasks : list.tasks;
   if (editingTaskId) {
-    const task = list.tasks.find(t => t.id === editingTaskId);
+    const task = taskArr.find(t => t.id === editingTaskId);
     task.name = name;
     task.icon = selectedTaskIcon;
     task.inputType = inputType;
     task.options = inputType === 'dropdown' ? taskDropdownOptions.slice() : undefined;
   } else {
     const newTask = { id: uid(), name, icon: selectedTaskIcon, inputType, options: inputType === 'dropdown' ? taskDropdownOptions.slice() : undefined };
-    list.tasks.push(newTask);
-    if (list.type === 'habits') {
-      Object.keys(list.days || {}).forEach(d => {
-        if (!list.days[d].records) list.days[d].records = {};
-        list.days[d].records[newTask.id] = { value: inputType === 'checkbox' ? false : '' };
+    taskArr.push(newTask);
+    if (isHabit) {
+      if (!list.habitDays) list.habitDays = {};
+      Object.keys(list.habitDays).forEach(d => {
+        if (!list.habitDays[d].records) list.habitDays[d].records = {};
+        list.habitDays[d].records[newTask.id] = { value: inputType === 'checkbox' ? false : '' };
       });
     } else {
       Object.keys(list.months).forEach(m => {
@@ -1880,12 +2302,13 @@ function saveTask() {
 
 function deleteTask() {
   const list = data.lists.find(l => l.id === currentListId);
-  const confirmMsg = list.type === 'habits' ? 'حذف هذه المهمة من جميع الأيام؟' : 'حذف هذه المهمة من جميع الأشهر؟';
-  if (!confirm(confirmMsg)) return;
-  list.tasks = list.tasks.filter(t => t.id !== editingTaskId);
-  if (list.type === 'habits') {
-    Object.keys(list.days || {}).forEach(d => { delete list.days[d].records[editingTaskId]; });
+  const isHabit = list.type === 'habits';
+  if (!confirm(isHabit ? 'حذف هذه المهمة من جميع الأيام؟' : 'حذف هذه المهمة من جميع الأشهر؟')) return;
+  if (isHabit) {
+    list.habitTasks = (list.habitTasks || []).filter(t => t.id !== editingTaskId);
+    Object.keys(list.habitDays || {}).forEach(d => { delete list.habitDays[d].records[editingTaskId]; });
   } else {
+    list.tasks = list.tasks.filter(t => t.id !== editingTaskId);
     Object.keys(list.months).forEach(m => { delete list.months[m].records[editingTaskId]; });
   }
   save();
@@ -1900,10 +2323,9 @@ function openNewNoteModal() {
   document.getElementById('noteTitle').value = '';
   document.getElementById('noteText').value = '';
   document.getElementById('noteKind').value = 'text';
-  document.getElementById('noteTextGroup').style.display = 'block';
-  document.getElementById('noteTableGroup').style.display = 'none';
-  noteTableData = { columns: [], rows: [] };
   document.getElementById('deleteNoteBtn').style.display = 'none';
+  noteTableData = { headers: ['العمود 1'], rows: [['']] };
+  onNoteKindChange();
   openModal('noteModal');
 }
 
@@ -1912,22 +2334,20 @@ function openEditNoteModal(noteId) {
   const note = (list.notes || []).find(n => n.id === noteId);
   if (!note) return;
   editingNoteId = noteId;
-  const kind = note.kind || 'text';
   document.getElementById('noteModalTitle').textContent = 'تعديل الملاحظة';
   document.getElementById('noteTitle').value = note.title || '';
   document.getElementById('noteText').value = note.text || '';
-  document.getElementById('noteKind').value = kind;
-  document.getElementById('noteTextGroup').style.display = kind === 'table' ? 'none' : 'block';
-  document.getElementById('noteTableGroup').style.display = kind === 'table' ? 'block' : 'none';
-  if (kind === 'table') {
-    noteTableData = note.table
-      ? { columns: note.table.columns.slice(), rows: note.table.rows.map(r => r.slice()) }
-      : { columns: ['العمود 1', 'العمود 2'], rows: [['', '']] };
-    renderNoteTableEditor();
-  } else {
-    noteTableData = { columns: [], rows: [] };
-  }
+  document.getElementById('noteKind').value = note.kind || 'text';
   document.getElementById('deleteNoteBtn').style.display = 'inline-block';
+  if (note.kind === 'table' && note.tableData) {
+    noteTableData = {
+      headers: (note.tableData.headers && note.tableData.headers.length ? note.tableData.headers : ['العمود 1']).slice(),
+      rows: (note.tableData.rows && note.tableData.rows.length ? note.tableData.rows : [['']]).map(r => r.slice())
+    };
+  } else {
+    noteTableData = { headers: ['العمود 1'], rows: [['']] };
+  }
+  onNoteKindChange();
   openModal('noteModal');
 }
 
@@ -1935,61 +2355,60 @@ function onNoteKindChange() {
   const kind = document.getElementById('noteKind').value;
   document.getElementById('noteTextGroup').style.display = kind === 'table' ? 'none' : 'block';
   document.getElementById('noteTableGroup').style.display = kind === 'table' ? 'block' : 'none';
-  if (kind === 'table' && noteTableData.columns.length === 0) {
-    noteTableData = { columns: ['العمود 1', 'العمود 2'], rows: [['', '']] };
-    renderNoteTableEditor();
-  }
+  if (kind === 'table') renderNoteTableEditor();
 }
 
-// ---- Table editor (for table-kind notes) ----
+// ---- Table editor (used by the note modal for the 'table' note kind) ----
 function renderNoteTableEditor() {
   const container = document.getElementById('noteTableEditor');
-  const cols = noteTableData.columns;
+  const headers = noteTableData.headers;
   const rows = noteTableData.rows;
-  let html = '<div class="table-wrapper"><table><thead><tr>';
-  cols.forEach((c, ci) => {
-    html += `<th style="padding:4px">
-      <input type="text" value="${escapeAttr(c)}" style="font-size:12px;padding:6px;text-align:center;color:#111;background:#fff;border-radius:6px" oninput="updateNoteTableColumn(${ci}, this.value)">
-      ${cols.length > 1 ? `<div style="margin-top:4px;cursor:pointer;color:#fecaca;font-size:11px" onclick="removeNoteTableColumn(${ci})">حذف العمود ×</div>` : ''}
-    </th>`;
+  let html = `<div class="table-editor"><div class="table-editor-scroll"><table><thead><tr>`;
+  headers.forEach((h, ci) => {
+    html += `<th><input type="text" value="${escapeAttr(h)}" placeholder="عمود ${ci + 1}" oninput="updateTableHeader(${ci}, this.value)"></th>`;
   });
-  html += '</tr></thead><tbody>';
+  html += `<th style="width:1%"></th></tr></thead><tbody>`;
   rows.forEach((row, ri) => {
-    html += '<tr>';
+    html += `<tr>`;
     row.forEach((cell, ci) => {
-      html += `<td style="padding:4px"><input type="text" value="${escapeAttr(cell)}" style="font-size:13px;padding:6px" oninput="updateNoteTableCell(${ri}, ${ci}, this.value)"></td>`;
+      html += `<td><input type="text" value="${escapeAttr(cell)}" oninput="updateTableCell(${ri}, ${ci}, this.value)"></td>`;
     });
-    html += `<td style="border:none;text-align:center">${rows.length > 1 ? `<span style="cursor:pointer;color:#ef4444;font-weight:700" onclick="removeNoteTableRow(${ri})" title="حذف الصف">×</span>` : ''}</td>`;
-    html += '</tr>';
+    html += `<td><button type="button" class="row-remove-btn" onclick="removeTableRow(${ri})" title="حذف الصف">×</button></td></tr>`;
   });
-  html += '</tbody></table></div>';
+  html += `</tbody></table></div>
+    <div class="table-editor-actions">
+      <button type="button" class="btn-secondary" onclick="addTableColumn()">+ عمود</button>
+      <button type="button" class="btn-secondary" onclick="removeTableColumn()">- عمود</button>
+      <button type="button" class="btn-primary" onclick="addTableRow()">+ صف</button>
+    </div>
+  </div>`;
   container.innerHTML = html;
 }
 
-function updateNoteTableColumn(idx, val) { noteTableData.columns[idx] = val; }
-function updateNoteTableCell(ri, ci, val) { noteTableData.rows[ri][ci] = val; }
+function updateTableHeader(ci, val) { noteTableData.headers[ci] = val; }
+function updateTableCell(ri, ci, val) { noteTableData.rows[ri][ci] = val; }
 
-function addNoteTableColumn() {
-  noteTableData.columns.push(`عمود ${noteTableData.columns.length + 1}`);
-  noteTableData.rows.forEach(r => r.push(''));
+function addTableColumn() {
+  noteTableData.headers.push(`العمود ${noteTableData.headers.length + 1}`);
+  noteTableData.rows.forEach(row => row.push(''));
   renderNoteTableEditor();
 }
 
-function removeNoteTableColumn(idx) {
-  if (noteTableData.columns.length <= 1) return;
-  noteTableData.columns.splice(idx, 1);
-  noteTableData.rows.forEach(r => r.splice(idx, 1));
+function removeTableColumn() {
+  if (noteTableData.headers.length <= 1) return;
+  noteTableData.headers.pop();
+  noteTableData.rows.forEach(row => row.pop());
   renderNoteTableEditor();
 }
 
-function addNoteTableRow() {
-  noteTableData.rows.push(noteTableData.columns.map(() => ''));
+function addTableRow() {
+  noteTableData.rows.push(noteTableData.headers.map(() => ''));
   renderNoteTableEditor();
 }
 
-function removeNoteTableRow(idx) {
+function removeTableRow(ri) {
   if (noteTableData.rows.length <= 1) return;
-  noteTableData.rows.splice(idx, 1);
+  noteTableData.rows.splice(ri, 1);
   renderNoteTableEditor();
 }
 
@@ -2001,14 +2420,12 @@ function saveNote() {
   const nowIso = new Date().toISOString();
 
   let text = '';
-  let table;
+  let tableData;
   if (kind === 'table') {
-    const cleanCols = noteTableData.columns.map(c => c.trim() || 'عمود');
-    if (!cleanCols.length) { alert('أضف عمودًا واحدًا على الأقل'); return; }
-    const cleanRows = noteTableData.rows.map(r => r.map(c => c.trim()));
-    const hasContent = cleanRows.some(r => r.some(c => c !== ''));
-    if (!hasContent) { alert('أدخل بيانات في الجدول'); return; }
-    table = { columns: cleanCols, rows: cleanRows };
+    const cleanHeaders = noteTableData.headers.map((h, i) => h.trim() || `عمود ${i + 1}`);
+    const hasContent = noteTableData.rows.some(row => row.some(c => c.trim() !== ''));
+    if (!hasContent) { alert('أدخل محتوى الجدول في خلية واحدة على الأقل'); return; }
+    tableData = { headers: cleanHeaders, rows: noteTableData.rows.map(r => r.slice()) };
   } else {
     text = document.getElementById('noteText').value.trim();
     if (!text) { alert('اكتب نص الملاحظة'); return; }
@@ -2019,11 +2436,15 @@ function saveNote() {
     note.title = title || undefined;
     note.kind = kind;
     note.text = text;
-    note.table = table;
-    if (kind === 'checkbox') {
+    if (kind === 'table') {
+      note.tableData = tableData;
+      delete note.checked;
+    } else if (kind === 'checkbox') {
       if (typeof note.checked !== 'boolean') note.checked = false;
+      delete note.tableData;
     } else {
       delete note.checked;
+      delete note.tableData;
     }
     note.updatedAt = nowIso;
   } else {
@@ -2032,7 +2453,7 @@ function saveNote() {
       title: title || undefined,
       kind,
       text,
-      table,
+      tableData: kind === 'table' ? tableData : undefined,
       checked: kind === 'checkbox' ? false : undefined,
       createdAt: nowIso,
       updatedAt: null
@@ -2255,7 +2676,7 @@ function renderIconPicker(containerId, icons, selected, onSelect) {
 
 // ---- Backup / Restore ----
 function exportBackup() {
-  const payload = JSON.stringify(data, null, 2);
+  const payload = JSON.stringify(getSerializableData(), null, 2);
   const blob = new Blob([payload], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -2278,11 +2699,13 @@ function importBackup(event) {
   reader.onload = (e) => {
     try {
       const imported = JSON.parse(e.target.result);
-      if (!imported || !Array.isArray(imported.lists)) throw new Error('صيغة غير صالحة');
-      if (!confirm('سيتم استبدال كل بياناتك الحالية بالنسخة المستوردة. متابعة؟')) return;
+      if (!imported || (!Array.isArray(imported.lists) && !Array.isArray(imported.worksheets))) throw new Error('صيغة غير صالحة');
+      if (!confirm('سيتم استبدال كل بياناتك الحالية (كل أوراق العمل) بالنسخة المستوردة. متابعة؟')) return;
       data = migrateData(imported);
-      save();
+      currentWorksheetId = null;
       currentListId = null;
+      data.lists = undefined;
+      save();
       render();
       alert('تم استيراد النسخة الاحتياطية بنجاح ✅');
     } catch (err) {
