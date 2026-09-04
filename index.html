@@ -1,0 +1,1278 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>قوائم التزاماتي الشهرية</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#667eea">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="التزاماتي">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
+  body {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 20px;
+    color: #333;
+  }
+  .container { max-width: 900px; margin: 0 auto; }
+  .card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  }
+  h1 { color: #fff; text-align: center; margin-bottom: 20px; font-size: 28px; }
+  h2 { margin-bottom: 16px; color: #444; }
+  button {
+    cursor: pointer;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 18px;
+    font-size: 15px;
+    font-weight: 600;
+    transition: all 0.2s;
+  }
+  button:hover { transform: translateY(-2px); }
+  .btn-primary { background: #667eea; color: #fff; }
+  .btn-primary:hover { background: #5568d3; }
+  .btn-success { background: #10b981; color: #fff; }
+  .btn-danger { background: #ef4444; color: #fff; }
+  .btn-secondary { background: #e5e7eb; color: #374151; }
+  .btn-warning { background: #f59e0b; color: #fff; }
+  input, select, textarea {
+    width: 100%;
+    padding: 10px 14px;
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    font-size: 15px;
+    outline: none;
+    transition: border 0.2s;
+    font-family: inherit;
+  }
+  input:focus, select:focus, textarea:focus { border-color: #667eea; }
+  .form-group { margin-bottom: 14px; }
+  .form-group label { display: block; margin-bottom: 6px; font-weight: 600; color: #555; }
+
+  /* Lists */
+  .list-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px;
+    background: #f9fafb;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 2px solid transparent;
+  }
+  .list-item:hover { border-color: #667eea; background: #f3f4f6; }
+  .list-info { display: flex; align-items: center; gap: 12px; }
+  .list-icon { font-size: 28px; }
+  .list-name { font-weight: 600; font-size: 16px; }
+  .list-count { color: #6b7280; font-size: 13px; }
+
+  /* Month view */
+  .month-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .month-title { font-size: 22px; font-weight: 700; color: #444; }
+  .month-nav { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .month-nav button { padding: 8px 14px; font-size: 14px; }
+
+  /* Status badge */
+  .status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    margin-right: 8px;
+  }
+  .status-not-started { background: #fee2e2; color: #991b1b; }
+  .status-in-progress { background: #fef3c7; color: #92400e; }
+  .status-done { background: #d1fae5; color: #065f46; }
+  .status-notes { background: #e0e7ff; color: #3730a3; }
+
+  /* Tasks */
+  .task-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    background: #f9fafb;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    gap: 12px;
+  }
+  .task-check {
+    width: 24px;
+    height: 24px;
+    border: 2px solid #667eea;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.2s;
+  }
+  .task-check.checked { background: #10b981; border-color: #10b981; color: #fff; }
+  .task-content { flex: 1; }
+  .task-name { font-weight: 600; }
+  .task-name.completed { text-decoration: line-through; color: #9ca3af; }
+  .task-icon { font-size: 22px; }
+  .task-value-input { padding: 8px 12px; font-size: 14px; }
+  .task-value-row { width: 100%; }
+  .task-type-tag {
+    font-size: 11px;
+    background: #eef0ff;
+    color: #4338ca;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-right: 6px;
+    font-weight: 700;
+  }
+
+  /* Notes */
+  .note-item {
+    background: #f9fafb;
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  .note-item:hover { border-color: #667eea; }
+  .note-time { font-size: 12px; color: #6b7280; margin-bottom: 4px; font-weight: 600; }
+  .note-text { white-space: pre-wrap; line-height: 1.6; }
+
+  /* Progress */
+  .progress-bar {
+    width: 100%;
+    height: 10px;
+    background: #e5e7eb;
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 10px 0;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #10b981, #059669);
+    transition: width 0.3s;
+  }
+  .progress-text { font-size: 14px; color: #6b7280; text-align: center; }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: #fff;
+    border-radius: 16px;
+    padding: 24px;
+    max-width: 500px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: slideUp 0.3s;
+  }
+  @keyframes slideUp {
+    from { transform: translateY(30px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .modal-title { font-size: 20px; font-weight: 700; }
+  .close-btn {
+    background: none;
+    font-size: 24px;
+    color: #6b7280;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+  }
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  /* Icon picker */
+  .icon-picker {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 6px;
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 8px;
+    background: #f9fafb;
+    border-radius: 10px;
+  }
+  .icon-option {
+    font-size: 22px;
+    padding: 8px;
+    text-align: center;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.2s;
+    border: 2px solid transparent;
+  }
+  .icon-option:hover { background: #e5e7eb; }
+  .icon-option.selected { background: #667eea; border-color: #667eea; transform: scale(1.1); }
+
+  /* Type selector (todo vs notes) */
+  .type-selector { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .type-option {
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 14px 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .type-option.selected { border-color: #667eea; background: #eef0ff; }
+  .type-option.locked { opacity: 0.5; cursor: not-allowed; }
+  .type-option .hint { margin-top: 4px; }
+
+  /* Dropdown options editor */
+  .option-tag {
+    background: #e5e7eb;
+    padding: 4px 10px;
+    border-radius: 14px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .option-tag .remove-x { cursor: pointer; color: #ef4444; font-weight: 700; }
+
+  /* Table view */
+  .table-wrapper { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 10px; text-align: center; border: 1px solid #e5e7eb; }
+  th { background: #667eea; color: #fff; font-weight: 600; }
+  td.completed-cell { background: #d1fae5; }
+  td.pending-cell { background: #fee2e2; }
+
+  /* Stats */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 10px;
+  }
+  .stat-card {
+    position: relative;
+    min-width: 100px;
+    padding: 12px;
+    border-radius: 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 2px solid transparent;
+  }
+  .stat-delete {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: rgba(239,68,68,0.15);
+    color: #ef4444;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    line-height: 1;
+  }
+  .stat-delete:hover { background: #ef4444; color: #fff; }
+  .stat-card:hover { transform: translateY(-3px); }
+  .stat-card.current { border-color: #667eea; }
+  .stat-card.done { background: #d1fae5; }
+  .stat-card.in-progress { background: #fef3c7; }
+  .stat-card.not-started { background: #fee2e2; }
+  .stat-month { font-weight: 700; font-size: 14px; }
+  .stat-percent { font-size: 20px; font-weight: 800; margin: 4px 0; }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #6b7280;
+  }
+  .empty-state .icon { font-size: 60px; margin-bottom: 12px; }
+
+  .view-toggle { display: flex; gap: 8px; margin-bottom: 16px; }
+  .view-toggle button { flex: 1; }
+  .view-toggle button.active { background: #667eea; color: #fff; }
+
+  .back-btn { margin-bottom: 16px; }
+  .hint { font-size: 13px; color: #6b7280; margin-top: 6px; }
+
+  /* Backup bar */
+  .backup-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .backup-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .info-body { line-height: 1.9; font-size: 14.5px; color: #374151; }
+  .info-body ul { margin-right: 20px; margin-top: 8px; }
+  .info-body p { margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<div class="container" id="app"></div>
+
+<!-- Modal: New/Edit List -->
+<div class="modal-overlay" id="listModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="listModalTitle">قائمة جديدة</div>
+      <button class="close-btn" onclick="closeModal('listModal')">×</button>
+    </div>
+    <div class="form-group">
+      <label>اسم القائمة</label>
+      <input type="text" id="listName" placeholder="مثال: عباداتي اليومية">
+    </div>
+    <div class="form-group">
+      <label>نوع القائمة</label>
+      <div class="type-selector">
+        <div class="type-option" id="typeOptionTodo" onclick="selectListType('todo')">
+          <div style="font-size:26px">✅</div>
+          <div style="font-weight:700">قائمة مهام</div>
+          <div class="hint">لتتبع التزامات وتضع علامة/قيمة عليها كل شهر</div>
+        </div>
+        <div class="type-option" id="typeOptionNotes" onclick="selectListType('notes')">
+          <div style="font-size:26px">📝</div>
+          <div style="font-weight:700">قائمة ملاحظات</div>
+          <div class="hint">لإضافة ملاحظات حرة خلال الشهر</div>
+        </div>
+      </div>
+      <p class="hint" id="typeLockedHint" style="display:none">🔒 لا يمكن تغيير نوع القائمة بعد إنشائها</p>
+    </div>
+    <div class="form-group">
+      <label>اختر رمزًا</label>
+      <div class="icon-picker" id="listIconPicker"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('listModal')">إلغاء</button>
+      <button class="btn-primary" onclick="saveList()">حفظ</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Add/Edit Task -->
+<div class="modal-overlay" id="taskModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="taskModalTitle">إضافة مهمة</div>
+      <button class="close-btn" onclick="closeModal('taskModal')">×</button>
+    </div>
+    <div class="form-group">
+      <label>اسم المهمة</label>
+      <input type="text" id="taskName" placeholder="مثال: قراءة القرآن">
+    </div>
+    <div class="form-group">
+      <label>نوع الإدخال</label>
+      <select id="taskInputType" onchange="onTaskInputTypeChange()">
+        <option value="checkbox">✅ خانة اختيار (تم / لم يتم)</option>
+        <option value="text">📝 نص حر</option>
+        <option value="number">🔢 رقم</option>
+        <option value="dropdown">📋 قائمة منسدلة</option>
+      </select>
+    </div>
+    <div class="form-group" id="dropdownOptionsGroup" style="display:none">
+      <label>خيارات القائمة المنسدلة</label>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <input type="text" id="newOptionInput" placeholder="أضف خيارًا واضغط إدخال" onkeydown="if(event.key==='Enter'){event.preventDefault();addDropdownOption();}">
+        <button type="button" class="btn-secondary" onclick="addDropdownOption()" style="white-space:nowrap">إضافة</button>
+      </div>
+      <div id="optionsTags" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+      <p class="hint">أضف خيارين على الأقل</p>
+    </div>
+    <div class="form-group">
+      <label>اختر رمزًا للمهمة</label>
+      <div class="icon-picker" id="taskIconPicker"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-danger" id="deleteTaskBtn" onclick="deleteTask()" style="display:none;margin-left:auto">حذف</button>
+      <button class="btn-secondary" onclick="closeModal('taskModal')">إلغاء</button>
+      <button class="btn-primary" onclick="saveTask()">حفظ</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Add/Edit Note -->
+<div class="modal-overlay" id="noteModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="noteModalTitle">إضافة ملاحظة</div>
+      <button class="close-btn" onclick="closeModal('noteModal')">×</button>
+    </div>
+    <div class="form-group">
+      <label>الملاحظة</label>
+      <textarea id="noteText" rows="5" placeholder="اكتب ملاحظتك هنا..." style="resize:vertical"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-danger" id="deleteNoteBtn" onclick="deleteNote()" style="display:none;margin-left:auto">حذف</button>
+      <button class="btn-secondary" onclick="closeModal('noteModal')">إلغاء</button>
+      <button class="btn-primary" onclick="saveNote()">حفظ</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Storage info -->
+<div class="modal-overlay" id="infoModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">ℹ️ كيف تُحفظ بياناتك</div>
+      <button class="close-btn" onclick="closeModal('infoModal')">×</button>
+    </div>
+    <div class="info-body">
+      <p>📌 يتم حفظ كل بياناتك <b>داخل متصفحك فقط</b> (localStorage)، وليس داخل ملف الـ HTML نفسه ولا على أي خادم.</p>
+      <br>
+      <p>⚠️ هذا يعني أن بياناتك قد <b>تُمسح</b> في الحالات التالية:</p>
+      <ul>
+        <li>مسح ذاكرة التخزين المؤقت (Cache) أو بيانات التصفح</li>
+        <li>فتح الملف من متصفح مختلف أو جهاز مختلف</li>
+        <li>استخدام وضع التصفح الخفي (خاص / Incognito)</li>
+        <li>نقل أو إعادة تسمية الملف في بعض المتصفحات</li>
+        <li>إعادة تثبيت المتصفح أو تنظيف النظام</li>
+      </ul>
+      <br>
+      <p>✅ لحماية سجلّك بالكامل (History) بشكل دائم:</p>
+      <ul>
+        <li>اضغط <b>"تصدير نسخة احتياطية"</b> بشكل دوري (كل أسبوع مثلًا)</li>
+        <li>احفظ الملف الناتج (JSON) في مكان آمن مثل Google Drive أو iCloud</li>
+        <li>عند الحاجة، استخدم <b>"استيراد نسخة"</b> لاستعادة بياناتك على أي جهاز</li>
+      </ul>
+      <br>
+      <p class="hint">💡 نصيحة: افتح الملف دائمًا من نفس المتصفح ونفس المسار للحفاظ على استمرارية الحفظ التلقائي.</p>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-primary" onclick="closeModal('infoModal')">فهمت</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============ State ============
+let data = loadData();
+let currentListId = null;
+let currentMonth = getCurrentMonth(); // YYYY-MM
+let viewMode = 'month'; // 'month' | 'table'
+let editingListId = null;
+let editingTaskId = null;
+let editingNoteId = null;
+let selectedListIcon = '📋';
+let selectedTaskIcon = '⭐';
+let selectedListType = 'todo';
+let selectedTaskInputType = 'checkbox';
+let taskDropdownOptions = [];
+
+const ICONS = ['📋','⭐','🕌','📖','💪','🏃','💧','🍎','💤','📚','💼','🎯','❤️','🌟','✨','🔥','💡','🎨','🎵','📝','🏠','👨‍👩‍👧','🚗','💰','📱','☕','🍽️','🧘','🌱','🎓','💊','🏋️'];
+
+const ARABIC_MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+
+const INPUT_TYPE_LABELS = { checkbox: '✅ خانة اختيار', text: '📝 نص', number: '🔢 رقم', dropdown: '📋 قائمة' };
+
+function getCurrentMonth() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+
+// ============ Persistence ============
+function loadData() {
+  let raw = null;
+  try { raw = localStorage.getItem('todoListsData'); } catch (e) { raw = null; }
+  let parsed = null;
+  try { parsed = raw ? JSON.parse(raw) : null; } catch (e) { parsed = null; }
+  if (!parsed || !Array.isArray(parsed.lists)) parsed = { version: 2, lists: [] };
+
+  // Migrate old data (v1: no "type"/"version", records had {completed})
+  if (!parsed.version) {
+    parsed.lists.forEach(list => {
+      list.type = list.type || 'todo';
+      (list.tasks || []).forEach(t => { t.inputType = t.inputType || 'checkbox'; });
+      Object.values(list.months || {}).forEach(monthObj => {
+        Object.keys(monthObj.records || {}).forEach(tid => {
+          const rec = monthObj.records[tid];
+          if (rec && typeof rec.completed !== 'undefined' && typeof rec.value === 'undefined') {
+            rec.value = rec.completed;
+            delete rec.completed;
+          }
+        });
+      });
+    });
+    parsed.version = 2;
+  }
+  return parsed;
+}
+
+function save() {
+  data.lastSaved = new Date().toISOString();
+  try {
+    localStorage.setItem('todoListsData', JSON.stringify(data));
+    const info = document.getElementById('lastSavedInfo');
+    if (info) info.textContent = 'آخر حفظ: ' + formatDateTime(data.lastSaved);
+  } catch (e) {
+    alert('⚠️ تعذّر حفظ البيانات في هذا المتصفح. يُرجى الضغط على "تصدير نسخة احتياطية" فورًا لتفادي فقدان بياناتك.');
+  }
+}
+
+function formatDateTime(iso) {
+  const d = new Date(iso);
+  return d.toLocaleString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+}
+
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+const escapeAttr = escapeHtml;
+
+function formatMonth(m) {
+  const [y, mo] = m.split('-');
+  return `${ARABIC_MONTHS[parseInt(mo) - 1]} ${y}`;
+}
+
+// ============ Todo-list helpers ============
+function isFilled(task, record) {
+  if (!record) return false;
+  const v = record.value;
+  switch (task.inputType) {
+    case 'text': return typeof v === 'string' && v.trim() !== '';
+    case 'number': return v !== null && v !== undefined && v !== '';
+    case 'dropdown': return v !== null && v !== undefined && v !== '';
+    case 'checkbox':
+    default: return v === true;
+  }
+}
+
+function getMonthStatus(list, month) {
+  if (list.type === 'notes') return null;
+  const monthData = list.months?.[month];
+  if (!monthData || !list.tasks.length) return 'not-started';
+  const completed = list.tasks.filter(t => isFilled(t, monthData.records?.[t.id])).length;
+  if (completed === 0) return 'not-started';
+  if (completed === list.tasks.length) return 'done';
+  return 'in-progress';
+}
+
+function getMonthPercent(list, month) {
+  if (list.type === 'notes') return 0;
+  if (!list.tasks.length) return 0;
+  const monthData = list.months?.[month];
+  if (!monthData) return 0;
+  const completed = list.tasks.filter(t => isFilled(t, monthData.records?.[t.id])).length;
+  return Math.round((completed / list.tasks.length) * 100);
+}
+
+function getNoteCount(list, month) {
+  return (list.months?.[month]?.notes || []).length;
+}
+
+function statusLabel(s) {
+  return s === 'done' ? 'مكتمل' : s === 'in-progress' ? 'قيد التنفيذ' : 'لم يبدأ';
+}
+
+// ============ Render ============
+function render() {
+  const app = document.getElementById('app');
+  if (!currentListId) {
+    renderListsView(app);
+  } else {
+    renderDetailView(app);
+  }
+}
+
+function renderListsView(app) {
+  let html = `<h1>📋 قوائمي</h1>`;
+
+  html += `
+    <div class="card">
+      <div class="backup-bar">
+        <div>
+          <div style="font-weight:700">💾 نسخة احتياطية للبيانات</div>
+          <div class="hint" id="lastSavedInfo">${data.lastSaved ? 'آخر حفظ: ' + formatDateTime(data.lastSaved) : 'لم يتم الحفظ بعد'}</div>
+        </div>
+        <div class="backup-actions">
+          <button class="btn-success" onclick="exportBackup()">⬇️ تصدير نسخة احتياطية</button>
+          <button class="btn-secondary" onclick="triggerImport()">⬆️ استيراد نسخة</button>
+          <button class="btn-secondary" onclick="showInfoModal()">ℹ️ كيف تُحفظ بياناتي؟</button>
+        </div>
+      </div>
+      <input type="file" id="importFileInput" accept="application/json" style="display:none" onchange="importBackup(event)">
+    </div>
+  `;
+
+  if (!data.lists.length) {
+    html += `
+      <div class="card">
+        <div class="empty-state">
+          <div class="icon">📭</div>
+          <p>ما عندك أي قائمة بعد.</p>
+          <p>أنشئ أول قائمة التزامات أو ملاحظات شهرية لك.</p>
+          <br>
+          <button class="btn-primary" onclick="openNewListModal()">+ إنشاء قائمة</button>
+        </div>
+      </div>`;
+  } else {
+    html += `<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h2 style="margin:0">قوائمك</h2>
+        <button class="btn-primary" onclick="openNewListModal()">+ قائمة جديدة</button>
+      </div>`;
+    data.lists.forEach(list => {
+      let subtitle, badgeHtml;
+      if (list.type === 'notes') {
+        const count = getNoteCount(list, getCurrentMonth());
+        subtitle = `ملاحظات · هذا الشهر: ${count}`;
+        badgeHtml = `<span class="status-badge status-notes">📝 ملاحظات</span>`;
+      } else {
+        const currentStatus = getMonthStatus(list, getCurrentMonth());
+        const percent = getMonthPercent(list, getCurrentMonth());
+        subtitle = `${list.tasks.length} التزام · الشهر الحالي: ${percent}%`;
+        badgeHtml = `<span class="status-badge status-${currentStatus}">${statusLabel(currentStatus)}</span>`;
+      }
+      html += `
+        <div class="list-item" onclick="openList('${list.id}')">
+          <div class="list-info">
+            <div class="list-icon">${list.icon}</div>
+            <div>
+              <div class="list-name">${escapeHtml(list.name)}</div>
+              <div class="list-count">${subtitle}</div>
+            </div>
+          </div>
+          ${badgeHtml}
+        </div>`;
+    });
+    html += `</div>`;
+  }
+  app.innerHTML = html;
+}
+
+function ensureMonthData(list, month) {
+  if (!list.months) list.months = {};
+  if (list.type === 'notes') {
+    if (!list.months[month]) { list.months[month] = { notes: [] }; save(); }
+    else if (!list.months[month].notes) { list.months[month].notes = []; save(); }
+  } else {
+    if (!list.months[month]) list.months[month] = { records: {} };
+    list.tasks.forEach(t => {
+      if (!list.months[month].records[t.id]) {
+        list.months[month].records[t.id] = { value: t.inputType === 'checkbox' ? false : '' };
+      }
+    });
+    save();
+  }
+}
+
+function renderDetailView(app) {
+  const list = data.lists.find(l => l.id === currentListId);
+  if (!list) { currentListId = null; render(); return; }
+  ensureMonthData(list, currentMonth);
+
+  let bodyHtml;
+  if (list.type === 'notes') {
+    bodyHtml = viewMode === 'month' ? renderNotesMonthView(list) : renderNotesTableView(list);
+  } else {
+    const status = getMonthStatus(list, currentMonth);
+    const percent = getMonthPercent(list, currentMonth);
+    const completed = list.tasks.filter(t => isFilled(t, list.months[currentMonth].records[t.id])).length;
+    const isCurrentMonth = currentMonth === getCurrentMonth();
+    bodyHtml = viewMode === 'month'
+      ? renderMonthView(list, status, percent, completed, isCurrentMonth)
+      : renderTableView(list);
+  }
+
+  let html = `
+    <h1>${list.icon} ${escapeHtml(list.name)}</h1>
+    <button class="btn-secondary back-btn" onclick="goBack()">→ العودة للقوائم</button>
+
+    <div class="view-toggle">
+      <button class="${viewMode === 'month' ? 'active' : ''}" onclick="setView('month')">🗂️ شهر بشهر</button>
+      <button class="${viewMode === 'table' ? 'active' : ''}" onclick="setView('table')">📊 عرض كجدول</button>
+    </div>
+
+    ${bodyHtml}
+
+    <div class="card">
+      <h2>📈 الأداء خلال الأشهر الماضية</h2>
+      <p class="hint">اضغط على أي شهر للعرض · اضغط × لحذف بيانات الشهر</p>
+      <div class="stats-grid" style="margin-top:12px">
+        ${renderStats(list)}
+      </div>
+    </div>
+  `;
+  app.innerHTML = html;
+}
+
+function renderMonthNav(isCurrentMonth) {
+  return `
+    <div class="month-nav">
+      <button class="btn-secondary" onclick="prevMonth()">‹ السابق</button>
+      <button class="btn-primary" onclick="goToCurrentMonth()">اليوم</button>
+      <button class="btn-secondary" onclick="nextMonth()">التالي ›</button>
+    </div>
+  `;
+}
+
+function renderMonthView(list, status, percent, completed, isCurrentMonth) {
+  return `
+    <div class="card">
+      <div class="month-header">
+        <div>
+          <div class="month-title">${formatMonth(currentMonth)}</div>
+          <span class="status-badge status-${status}">${statusLabel(status)}</span>
+          ${!isCurrentMonth ? '<span class="status-badge" style="background:#e0e7ff;color:#3730a3">‹› شهر سابق</span>' : ''}
+        </div>
+        ${renderMonthNav(isCurrentMonth)}
+      </div>
+
+      <div class="progress-bar"><div class="progress-fill" style="width:${percent}%"></div></div>
+      <div class="progress-text">${percent}% · ${completed} من ${list.tasks.length} التزامات منجزة</div>
+
+      <div style="margin-top:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <h3>الالتزامات</h3>
+          <button class="btn-primary" onclick="openNewTaskModal()">+ إضافة</button>
+        </div>
+        ${list.tasks.length === 0 ? `
+          <div class="empty-state">
+            <div class="icon">📝</div>
+            <p>لا توجد التزامات بعد. أضف أول التزام!</p>
+          </div>
+        ` : list.tasks.map(t => renderTask(list, t)).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderTask(list, task) {
+  const record = list.months[currentMonth].records[task.id] || {};
+  const rawVal = record.value;
+
+  if (task.inputType === 'checkbox') {
+    const checked = rawVal === true;
+    return `
+      <div class="task-item">
+        <div class="task-check ${checked ? 'checked' : ''}" onclick="toggleCheckbox('${task.id}')">${checked ? '✓' : ''}</div>
+        <div class="task-content" onclick="openEditTaskModal('${task.id}')">
+          <div class="task-name ${checked ? 'completed' : ''}">${task.icon} ${escapeHtml(task.name)}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  const safeVal = (typeof rawVal === 'boolean') ? '' : rawVal;
+  let controlHtml = '';
+  if (task.inputType === 'text') {
+    controlHtml = `<input type="text" class="task-value-input" value="${escapeAttr(safeVal || '')}" placeholder="اكتب هنا..." onchange="setTaskValue('${task.id}', this.value)">`;
+  } else if (task.inputType === 'number') {
+    controlHtml = `<input type="number" class="task-value-input" value="${safeVal === undefined || safeVal === null ? '' : safeVal}" placeholder="0" onchange="setTaskValue('${task.id}', this.value)">`;
+  } else if (task.inputType === 'dropdown') {
+    const opts = task.options || [];
+    controlHtml = `<select class="task-value-input" onchange="setTaskValue('${task.id}', this.value)">
+       <option value="">اختر...</option>
+       ${opts.map(o => `<option value="${escapeAttr(o)}" ${safeVal === o ? 'selected' : ''}>${escapeHtml(o)}</option>`).join('')}
+    </select>`;
+  }
+
+  return `
+    <div class="task-item" style="align-items:flex-start;flex-direction:column;gap:8px">
+      <div class="task-name" style="cursor:pointer" onclick="openEditTaskModal('${task.id}')">${task.icon} ${escapeHtml(task.name)}</div>
+      <div class="task-value-row">${controlHtml}</div>
+    </div>
+  `;
+}
+
+function renderTableView(list) {
+  const months = Object.keys(list.months || {}).sort();
+  if (!months.length) return `<div class="card"><p>لا توجد بيانات</p></div>`;
+  let html = `<div class="card"><div class="table-wrapper"><table>
+    <thead><tr><th>الالتزام</th>`;
+  months.forEach(m => html += `<th>${formatMonth(m)}</th>`);
+  html += `</tr></thead><tbody>`;
+  list.tasks.forEach(t => {
+    html += `<tr><td style="text-align:right;font-weight:600">${t.icon} ${escapeHtml(t.name)}</td>`;
+    months.forEach(m => {
+      const record = list.months[m].records?.[t.id];
+      const filled = isFilled(t, record);
+      let display = '—';
+      if (filled) display = t.inputType === 'checkbox' ? '✓' : escapeHtml(String(record.value));
+      html += `<td class="${filled ? 'completed-cell' : 'pending-cell'}">${display}</td>`;
+    });
+    html += `</tr>`;
+  });
+  html += `</tbody></table></div></div>`;
+  return html;
+}
+
+// ---- Notes list rendering ----
+function renderNotesMonthView(list) {
+  const notes = list.months[currentMonth].notes || [];
+  const isCurrentMonth = currentMonth === getCurrentMonth();
+  return `
+    <div class="card">
+      <div class="month-header">
+        <div>
+          <div class="month-title">${formatMonth(currentMonth)}</div>
+          <span class="status-badge status-notes">📝 ${notes.length} ملاحظة</span>
+          ${!isCurrentMonth ? '<span class="status-badge" style="background:#e0e7ff;color:#3730a3">‹› شهر سابق</span>' : ''}
+        </div>
+        ${renderMonthNav(isCurrentMonth)}
+      </div>
+
+      <div style="margin-top:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <h3>الملاحظات</h3>
+          <button class="btn-primary" onclick="openNewNoteModal()">+ إضافة ملاحظة</button>
+        </div>
+        ${notes.length === 0 ? `
+          <div class="empty-state">
+            <div class="icon">🗒️</div>
+            <p>لا توجد ملاحظات بعد هذا الشهر.</p>
+          </div>
+        ` : notes.slice().reverse().map(n => renderNote(n)).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderNote(note) {
+  return `
+    <div class="note-item" onclick="openEditNoteModal('${note.id}')">
+      <div class="note-time">🕒 ${escapeHtml(note.time)}</div>
+      <div class="note-text">${escapeHtml(note.text)}</div>
+    </div>
+  `;
+}
+
+function renderNotesTableView(list) {
+  const months = Object.keys(list.months || {}).sort().reverse();
+  if (!months.length) return `<div class="card"><p>لا توجد بيانات</p></div>`;
+  let html = '';
+  months.forEach(m => {
+    const notes = list.months[m].notes || [];
+    html += `<div class="card"><h2>${formatMonth(m)} <span style="font-size:13px;color:#6b7280;font-weight:400">(${notes.length} ملاحظة)</span></h2>`;
+    if (!notes.length) {
+      html += `<p class="hint">لا توجد ملاحظات</p>`;
+    } else {
+      notes.forEach(n => { html += renderNote(n); });
+    }
+    html += `</div>`;
+  });
+  return html;
+}
+
+function renderStats(list) {
+  const months = Object.keys(list.months || {}).sort();
+  if (!months.length) return '<p style="color:#6b7280">لا توجد بيانات بعد</p>';
+
+  if (list.type === 'notes') {
+    return months.map(m => {
+      const count = (list.months[m].notes || []).length;
+      const isCurrent = m === currentMonth;
+      return `
+        <div class="stat-card ${count > 0 ? 'done' : 'not-started'} ${isCurrent ? 'current' : ''}" onclick="goToMonth('${m}')">
+          <div class="stat-delete" onclick="event.stopPropagation(); deleteMonthData('${m}')" title="حذف بيانات هذا الشهر">×</div>
+          <div class="stat-month">${formatMonth(m).split(' ')[0]}</div>
+          <div class="stat-percent">${count}</div>
+          <div style="font-size:11px;color:#6b7280">ملاحظة</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  return months.map(m => {
+    const p = getMonthPercent(list, m);
+    const s = getMonthStatus(list, m);
+    const isCurrent = m === currentMonth;
+    return `
+      <div class="stat-card ${s} ${isCurrent ? 'current' : ''}" onclick="goToMonth('${m}')">
+        <div class="stat-delete" onclick="event.stopPropagation(); deleteMonthData('${m}')" title="حذف بيانات هذا الشهر">×</div>
+        <div class="stat-month">${formatMonth(m).split(' ')[0]}</div>
+        <div class="stat-percent">${p}%</div>
+        <div style="font-size:11px;color:#6b7280">${statusLabel(s)}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ============ Actions ============
+function openList(id) {
+  currentListId = id;
+  currentMonth = getCurrentMonth();
+  viewMode = 'month';
+  render();
+}
+
+function goBack() { currentListId = null; render(); }
+function setView(v) { viewMode = v; render(); }
+
+function prevMonth() {
+  const [y, m] = currentMonth.split('-').map(Number);
+  const d = new Date(y, m - 2, 1);
+  currentMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  render();
+}
+
+function nextMonth() {
+  const [y, m] = currentMonth.split('-').map(Number);
+  const d = new Date(y, m, 1);
+  currentMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  render();
+}
+
+function goToCurrentMonth() { currentMonth = getCurrentMonth(); render(); }
+function goToMonth(m) { currentMonth = m; viewMode = 'month'; render(); }
+
+function deleteMonthData(month) {
+  const list = data.lists.find(l => l.id === currentListId);
+  if (!confirm(`هل أنت متأكد من حذف كل بيانات شهر ${formatMonth(month)}؟ لا يمكن التراجع عن هذا الإجراء.`)) return;
+  delete list.months[month];
+  if (month === currentMonth) currentMonth = getCurrentMonth();
+  save();
+  render();
+}
+
+function toggleCheckbox(taskId) {
+  const list = data.lists.find(l => l.id === currentListId);
+  if (!list.months[currentMonth].records[taskId]) list.months[currentMonth].records[taskId] = { value: false };
+  list.months[currentMonth].records[taskId].value = !list.months[currentMonth].records[taskId].value;
+  save();
+  render();
+}
+
+function setTaskValue(taskId, val) {
+  const list = data.lists.find(l => l.id === currentListId);
+  const task = list.tasks.find(t => t.id === taskId);
+  if (!list.months[currentMonth].records[taskId]) list.months[currentMonth].records[taskId] = {};
+  list.months[currentMonth].records[taskId].value = (task.inputType === 'number' && val !== '') ? Number(val) : val;
+  save();
+  render();
+}
+
+// ============ Modals ============
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+// ---- List modal ----
+function openNewListModal() {
+  editingListId = null;
+  selectedListIcon = '📋';
+  document.getElementById('listModalTitle').textContent = 'قائمة جديدة';
+  document.getElementById('listName').value = '';
+  renderIconPicker('listIconPicker', ICONS, selectedListIcon, (icon) => { selectedListIcon = icon; });
+  document.getElementById('typeOptionTodo').classList.remove('locked');
+  document.getElementById('typeOptionNotes').classList.remove('locked');
+  document.getElementById('typeLockedHint').style.display = 'none';
+  selectListType('todo');
+  openModal('listModal');
+}
+
+function openEditListModal(id) {
+  const list = data.lists.find(l => l.id === id);
+  editingListId = id;
+  selectedListIcon = list.icon;
+  document.getElementById('listModalTitle').textContent = 'تعديل القائمة';
+  document.getElementById('listName').value = list.name;
+  renderIconPicker('listIconPicker', ICONS, selectedListIcon, (icon) => { selectedListIcon = icon; });
+  document.getElementById('typeOptionTodo').classList.add('locked');
+  document.getElementById('typeOptionNotes').classList.add('locked');
+  document.getElementById('typeLockedHint').style.display = 'block';
+  markSelectedType(list.type || 'todo');
+  openModal('listModal');
+}
+
+function selectListType(type) {
+  if (editingListId) return;
+  markSelectedType(type);
+}
+
+function markSelectedType(type) {
+  selectedListType = type;
+  document.getElementById('typeOptionTodo').classList.toggle('selected', type === 'todo');
+  document.getElementById('typeOptionNotes').classList.toggle('selected', type === 'notes');
+}
+
+function saveList() {
+  const name = document.getElementById('listName').value.trim();
+  if (!name) { alert('أدخل اسم القائمة'); return; }
+  if (editingListId) {
+    const list = data.lists.find(l => l.id === editingListId);
+    list.name = name;
+    list.icon = selectedListIcon;
+  } else {
+    data.lists.push({
+      id: uid(),
+      name,
+      icon: selectedListIcon,
+      type: selectedListType,
+      tasks: [],
+      months: {}
+    });
+  }
+  save();
+  closeModal('listModal');
+  render();
+}
+
+// ---- Task modal ----
+function openNewTaskModal() {
+  editingTaskId = null;
+  selectedTaskIcon = '⭐';
+  selectedTaskInputType = 'checkbox';
+  taskDropdownOptions = [];
+  document.getElementById('taskModalTitle').textContent = 'إضافة مهمة';
+  document.getElementById('taskName').value = '';
+  document.getElementById('taskInputType').value = 'checkbox';
+  document.getElementById('dropdownOptionsGroup').style.display = 'none';
+  document.getElementById('deleteTaskBtn').style.display = 'none';
+  renderIconPicker('taskIconPicker', ICONS, selectedTaskIcon, (icon) => { selectedTaskIcon = icon; });
+  renderOptionsTags();
+  openModal('taskModal');
+}
+
+function openEditTaskModal(taskId) {
+  const list = data.lists.find(l => l.id === currentListId);
+  const task = list.tasks.find(t => t.id === taskId);
+  editingTaskId = taskId;
+  selectedTaskIcon = task.icon;
+  selectedTaskInputType = task.inputType || 'checkbox';
+  taskDropdownOptions = (task.options || []).slice();
+  document.getElementById('taskModalTitle').textContent = 'تعديل المهمة';
+  document.getElementById('taskName').value = task.name;
+  document.getElementById('taskInputType').value = selectedTaskInputType;
+  document.getElementById('dropdownOptionsGroup').style.display = selectedTaskInputType === 'dropdown' ? 'block' : 'none';
+  document.getElementById('deleteTaskBtn').style.display = 'inline-block';
+  renderIconPicker('taskIconPicker', ICONS, selectedTaskIcon, (icon) => { selectedTaskIcon = icon; });
+  renderOptionsTags();
+  openModal('taskModal');
+}
+
+function onTaskInputTypeChange() {
+  selectedTaskInputType = document.getElementById('taskInputType').value;
+  document.getElementById('dropdownOptionsGroup').style.display = selectedTaskInputType === 'dropdown' ? 'block' : 'none';
+}
+
+function addDropdownOption() {
+  const input = document.getElementById('newOptionInput');
+  const val = input.value.trim();
+  if (!val) return;
+  taskDropdownOptions.push(val);
+  input.value = '';
+  renderOptionsTags();
+}
+
+function removeDropdownOption(idx) {
+  taskDropdownOptions.splice(idx, 1);
+  renderOptionsTags();
+}
+
+function renderOptionsTags() {
+  const container = document.getElementById('optionsTags');
+  container.innerHTML = taskDropdownOptions.map((o, i) => `
+    <span class="option-tag">${escapeHtml(o)} <span class="remove-x" onclick="removeDropdownOption(${i})">×</span></span>
+  `).join('');
+}
+
+function saveTask() {
+  const name = document.getElementById('taskName').value.trim();
+  if (!name) { alert('أدخل اسم المهمة'); return; }
+  const inputType = document.getElementById('taskInputType').value;
+  if (inputType === 'dropdown' && taskDropdownOptions.length < 2) {
+    alert('أضف خيارين على الأقل للقائمة المنسدلة');
+    return;
+  }
+  const list = data.lists.find(l => l.id === currentListId);
+  if (editingTaskId) {
+    const task = list.tasks.find(t => t.id === editingTaskId);
+    task.name = name;
+    task.icon = selectedTaskIcon;
+    task.inputType = inputType;
+    task.options = inputType === 'dropdown' ? taskDropdownOptions.slice() : undefined;
+  } else {
+    const newTask = { id: uid(), name, icon: selectedTaskIcon, inputType, options: inputType === 'dropdown' ? taskDropdownOptions.slice() : undefined };
+    list.tasks.push(newTask);
+    Object.keys(list.months).forEach(m => {
+      if (!list.months[m].records) list.months[m].records = {};
+      list.months[m].records[newTask.id] = { value: inputType === 'checkbox' ? false : '' };
+    });
+  }
+  save();
+  closeModal('taskModal');
+  render();
+}
+
+function deleteTask() {
+  if (!confirm('حذف هذه المهمة من جميع الأشهر؟')) return;
+  const list = data.lists.find(l => l.id === currentListId);
+  list.tasks = list.tasks.filter(t => t.id !== editingTaskId);
+  Object.keys(list.months).forEach(m => { delete list.months[m].records[editingTaskId]; });
+  save();
+  closeModal('taskModal');
+  render();
+}
+
+// ---- Note modal ----
+function nowTimeStr() {
+  const d = new Date();
+  return d.toLocaleString('ar-EG', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+function openNewNoteModal() {
+  editingNoteId = null;
+  document.getElementById('noteModalTitle').textContent = 'إضافة ملاحظة';
+  document.getElementById('noteText').value = '';
+  document.getElementById('deleteNoteBtn').style.display = 'none';
+  openModal('noteModal');
+}
+
+function openEditNoteModal(noteId) {
+  const list = data.lists.find(l => l.id === currentListId);
+  const note = list.months[currentMonth].notes.find(n => n.id === noteId);
+  editingNoteId = noteId;
+  document.getElementById('noteModalTitle').textContent = 'تعديل الملاحظة';
+  document.getElementById('noteText').value = note.text;
+  document.getElementById('deleteNoteBtn').style.display = 'inline-block';
+  openModal('noteModal');
+}
+
+function saveNote() {
+  const text = document.getElementById('noteText').value.trim();
+  if (!text) { alert('اكتب نص الملاحظة'); return; }
+  const list = data.lists.find(l => l.id === currentListId);
+  if (!list.months[currentMonth].notes) list.months[currentMonth].notes = [];
+  if (editingNoteId) {
+    const note = list.months[currentMonth].notes.find(n => n.id === editingNoteId);
+    note.text = text;
+    note.time = nowTimeStr();
+  } else {
+    list.months[currentMonth].notes.push({ id: uid(), text, time: nowTimeStr() });
+  }
+  save();
+  closeModal('noteModal');
+  render();
+}
+
+function deleteNote() {
+  if (!confirm('حذف هذه الملاحظة؟')) return;
+  const list = data.lists.find(l => l.id === currentListId);
+  list.months[currentMonth].notes = list.months[currentMonth].notes.filter(n => n.id !== editingNoteId);
+  save();
+  closeModal('noteModal');
+  render();
+}
+
+// ---- Info modal ----
+function showInfoModal() { openModal('infoModal'); }
+
+// ---- Icon picker ----
+function renderIconPicker(containerId, icons, selected, onSelect) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = icons.map(icon => `
+    <div class="icon-option ${icon === selected ? 'selected' : ''}" data-icon="${icon}">${icon}</div>
+  `).join('');
+  container.querySelectorAll('.icon-option').forEach(el => {
+    el.addEventListener('click', () => {
+      container.querySelectorAll('.icon-option').forEach(o => o.classList.remove('selected'));
+      el.classList.add('selected');
+      onSelect(el.dataset.icon);
+    });
+  });
+}
+
+// ---- Backup / Restore ----
+function exportBackup() {
+  const payload = JSON.stringify(data, null, 2);
+  const blob = new Blob([payload], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const d = new Date();
+  const stamp = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  a.href = url;
+  a.download = `نسخة-احتياطية-${stamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function triggerImport() { document.getElementById('importFileInput').click(); }
+
+function importBackup(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const imported = JSON.parse(e.target.result);
+      if (!imported || !Array.isArray(imported.lists)) throw new Error('صيغة غير صالحة');
+      if (!confirm('سيتم استبدال كل بياناتك الحالية بالنسخة المستوردة. متابعة؟')) return;
+      data = imported;
+      if (!data.version) data.version = 2;
+      save();
+      currentListId = null;
+      render();
+      alert('تم استيراد النسخة الاحتياطية بنجاح ✅');
+    } catch (err) {
+      alert('تعذّر قراءة الملف. تأكد أنه ملف نسخة احتياطية صالح.');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+// ============ Init ============
+render();
+
+// ---- PWA: register service worker (enables offline use + installability) ----
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js').catch(() => {
+      // Silently ignore (e.g. running from file:// where service workers aren't supported)
+    });
+  });
+}
+</script>
+</body>
+</html>
