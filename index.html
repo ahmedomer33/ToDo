@@ -443,6 +443,13 @@
       <button class="close-btn" onclick="closeModal('noteModal')">×</button>
     </div>
     <div class="form-group">
+      <label>نوع الملاحظة</label>
+      <select id="noteKind">
+        <option value="text">📝 نص حر</option>
+        <option value="checkbox">✅ خانة اختيار (تم / لم يتم)</option>
+      </select>
+    </div>
+    <div class="form-group">
       <label>الملاحظة</label>
       <textarea id="noteText" rows="5" placeholder="اكتب ملاحظتك هنا..." style="resize:vertical"></textarea>
     </div>
@@ -515,12 +522,10 @@ function getCurrentMonth() {
 }
 
 // ============ Persistence ============
-function loadData() {
-  let raw = null;
-  try { raw = localStorage.getItem('todoListsData'); } catch (e) { raw = null; }
-  let parsed = null;
-  try { parsed = raw ? JSON.parse(raw) : null; } catch (e) { parsed = null; }
-  if (!parsed || !Array.isArray(parsed.lists)) parsed = { version: 2, lists: [] };
+const CURRENT_VERSION = 3;
+
+function migrateData(parsed) {
+  if (!parsed || !Array.isArray(parsed.lists)) parsed = { version: CURRENT_VERSION, lists: [] };
 
   // Migrate old data (v1: no "type"/"version", records had {completed})
   if (!parsed.version) {
@@ -539,7 +544,41 @@ function loadData() {
     });
     parsed.version = 2;
   }
+
+  // Migrate v2 -> v3: notes lists no longer live inside months; flatten into list.notes
+  if (parsed.version < 3) {
+    parsed.lists.forEach(list => {
+      if (list.type === 'notes') {
+        const flat = [];
+        Object.keys(list.months || {}).sort().forEach(m => {
+          (list.months[m].notes || []).forEach(n => {
+            flat.push({
+              id: n.id || uid(),
+              kind: 'text',
+              text: n.text,
+              legacyTime: n.time || '',
+              createdAt: null,
+              updatedAt: null
+            });
+          });
+        });
+        list.notes = (list.notes || []).concat(flat);
+        list.months = {};
+      }
+    });
+    parsed.version = 3;
+  }
+
   return parsed;
+}
+
+function loadData() {
+  let raw = null;
+  try { raw = localStorage.getItem('todoListsData'); } catch (e) { raw = null; }
+  let parsed = null;
+  try { parsed = raw ? JSON.parse(raw) : null; } catch (e) { parsed = null; }
+  if (!parsed || !Array.isArray(parsed.lists)) parsed = { version: CURRENT_VERSION, lists: [] };
+  return migrateData(parsed);
 }
 
 function save() {
@@ -589,7 +628,9 @@ function isFilled(task, record) {
 function getMonthStatus(list, month) {
   if (list.type === 'notes') return null;
   const monthData = list.months?.[month];
-  if (!monthData || !list.tasks.length) return 'not-started';
+  if (!monthData) return 'not-started';
+  if (monthData.manualDone) return 'done';
+  if (!list.tasks.length) return 'not-started';
   const completed = list.tasks.filter(t => isFilled(t, monthData.records?.[t.id])).length;
   if (completed === 0) return 'not-started';
   if (completed === list.tasks.length) return 'done';
@@ -605,8 +646,18 @@ function getMonthPercent(list, month) {
   return Math.round((completed / list.tasks.length) * 100);
 }
 
-function getNoteCount(list, month) {
-  return (list.months?.[month]?.notes || []).length;
+function getNoteCount(list) {
+  return (list.notes || []).length;
+}
+
+function formatNoteDate(note) {
+  if (note.createdAt) {
+    const d = new Date(note.createdAt);
+    let label = d.toLocaleString('ar-EG', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    if (note.updatedAt) label += ' (مُعدَّلة)';
+    return label;
+  }
+  return note.legacyTime || '';
 }
 
 function statusLabel(s) {
@@ -663,8 +714,8 @@ function renderListsView(app) {
     data.lists.forEach(list => {
       let subtitle, badgeHtml;
       if (list.type === 'notes') {
-        const count = getNoteCount(list, getCurrentMonth());
-        subtitle = `ملاحظات · هذا الشهر: ${count}`;
+        const count = getNoteCount(list);
+        subtitle = `${count} ملاحظة`;
         badgeHtml = `<span class="status-badge status-notes">📝 ملاحظات</span>`;
       } else {
         const currentStatus = getMonthStatus(list, getCurrentMonth());
@@ -691,57 +742,54 @@ function renderListsView(app) {
 
 function ensureMonthData(list, month) {
   if (!list.months) list.months = {};
-  if (list.type === 'notes') {
-    if (!list.months[month]) { list.months[month] = { notes: [] }; save(); }
-    else if (!list.months[month].notes) { list.months[month].notes = []; save(); }
-  } else {
-    if (!list.months[month]) list.months[month] = { records: {} };
-    list.tasks.forEach(t => {
-      if (!list.months[month].records[t.id]) {
-        list.months[month].records[t.id] = { value: t.inputType === 'checkbox' ? false : '' };
-      }
-    });
-    save();
-  }
+  if (!list.months[month]) list.months[month] = { records: {} };
+  list.tasks.forEach(t => {
+    if (!list.months[month].records[t.id]) {
+      list.months[month].records[t.id] = { value: t.inputType === 'checkbox' ? false : '' };
+    }
+  });
+  save();
 }
 
 function renderDetailView(app) {
   const list = data.lists.find(l => l.id === currentListId);
   if (!list) { currentListId = null; render(); return; }
-  ensureMonthData(list, currentMonth);
-
-  let bodyHtml;
-  if (list.type === 'notes') {
-    bodyHtml = viewMode === 'month' ? renderNotesMonthView(list) : renderNotesTableView(list);
-  } else {
-    const status = getMonthStatus(list, currentMonth);
-    const percent = getMonthPercent(list, currentMonth);
-    const completed = list.tasks.filter(t => isFilled(t, list.months[currentMonth].records[t.id])).length;
-    const isCurrentMonth = currentMonth === getCurrentMonth();
-    bodyHtml = viewMode === 'month'
-      ? renderMonthView(list, status, percent, completed, isCurrentMonth)
-      : renderTableView(list);
-  }
 
   let html = `
     <h1>${list.icon} ${escapeHtml(list.name)}</h1>
     <button class="btn-secondary back-btn" onclick="goBack()">→ العودة للقوائم</button>
-
-    <div class="view-toggle">
-      <button class="${viewMode === 'month' ? 'active' : ''}" onclick="setView('month')">🗂️ شهر بشهر</button>
-      <button class="${viewMode === 'table' ? 'active' : ''}" onclick="setView('table')">📊 عرض كجدول</button>
-    </div>
-
-    ${bodyHtml}
-
-    <div class="card">
-      <h2>📈 الأداء خلال الأشهر الماضية</h2>
-      <p class="hint">اضغط على أي شهر للعرض · اضغط × لحذف بيانات الشهر</p>
-      <div class="stats-grid" style="margin-top:12px">
-        ${renderStats(list)}
-      </div>
-    </div>
   `;
+
+  if (list.type === 'notes') {
+    if (!list.notes) list.notes = [];
+    html += renderNotesView(list);
+  } else {
+    ensureMonthData(list, currentMonth);
+    const status = getMonthStatus(list, currentMonth);
+    const percent = getMonthPercent(list, currentMonth);
+    const completed = list.tasks.filter(t => isFilled(t, list.months[currentMonth].records[t.id])).length;
+    const isCurrentMonth = currentMonth === getCurrentMonth();
+    const bodyHtml = viewMode === 'month'
+      ? renderMonthView(list, status, percent, completed, isCurrentMonth)
+      : renderTableView(list);
+
+    html += `
+      <div class="view-toggle">
+        <button class="${viewMode === 'month' ? 'active' : ''}" onclick="setView('month')">🗂️ شهر بشهر</button>
+        <button class="${viewMode === 'table' ? 'active' : ''}" onclick="setView('table')">📊 عرض كجدول</button>
+      </div>
+
+      ${bodyHtml}
+
+      <div class="card">
+        <h2>📈 الأداء خلال الأشهر الماضية</h2>
+        <p class="hint">اضغط على أي شهر للعرض · اضغط × لحذف بيانات الشهر</p>
+        <div class="stats-grid" style="margin-top:12px">
+          ${renderStats(list)}
+        </div>
+      </div>
+    `;
+  }
   app.innerHTML = html;
 }
 
@@ -756,12 +804,15 @@ function renderMonthNav(isCurrentMonth) {
 }
 
 function renderMonthView(list, status, percent, completed, isCurrentMonth) {
+  const monthData = list.months[currentMonth];
+  const manualDone = !!monthData.manualDone;
   return `
     <div class="card">
       <div class="month-header">
         <div>
           <div class="month-title">${formatMonth(currentMonth)}</div>
           <span class="status-badge status-${status}">${statusLabel(status)}</span>
+          ${manualDone ? '<span class="status-badge" style="background:#ede9fe;color:#5b21b6">✋ تحديد يدوي</span>' : ''}
           ${!isCurrentMonth ? '<span class="status-badge" style="background:#e0e7ff;color:#3730a3">‹› شهر سابق</span>' : ''}
         </div>
         ${renderMonthNav(isCurrentMonth)}
@@ -769,6 +820,11 @@ function renderMonthView(list, status, percent, completed, isCurrentMonth) {
 
       <div class="progress-bar"><div class="progress-fill" style="width:${percent}%"></div></div>
       <div class="progress-text">${percent}% · ${completed} من ${list.tasks.length} التزامات منجزة</div>
+
+      <label style="display:flex;align-items:center;gap:8px;margin-top:12px;cursor:pointer">
+        <input type="checkbox" ${manualDone ? 'checked' : ''} onchange="toggleManualDone()" style="width:auto">
+        <span style="font-size:14px;color:#555">وضع علامة "مكتمل" على هذا الشهر يدويًا (حتى لو تبقّت مهام غير منجزة)</span>
+      </label>
 
       <div style="margin-top:20px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -846,81 +902,50 @@ function renderTableView(list) {
   return html;
 }
 
-// ---- Notes list rendering ----
-function renderNotesMonthView(list) {
-  const notes = list.months[currentMonth].notes || [];
-  const isCurrentMonth = currentMonth === getCurrentMonth();
+// ---- Notes list rendering (flat, not tied to a month) ----
+function renderNotesView(list) {
+  const notes = list.notes || [];
   return `
     <div class="card">
-      <div class="month-header">
-        <div>
-          <div class="month-title">${formatMonth(currentMonth)}</div>
-          <span class="status-badge status-notes">📝 ${notes.length} ملاحظة</span>
-          ${!isCurrentMonth ? '<span class="status-badge" style="background:#e0e7ff;color:#3730a3">‹› شهر سابق</span>' : ''}
-        </div>
-        ${renderMonthNav(isCurrentMonth)}
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px">
+        <h2 style="margin:0">📝 الملاحظات (${notes.length})</h2>
+        <button class="btn-primary" onclick="openNewNoteModal()">+ إضافة ملاحظة</button>
       </div>
-
-      <div style="margin-top:20px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-          <h3>الملاحظات</h3>
-          <button class="btn-primary" onclick="openNewNoteModal()">+ إضافة ملاحظة</button>
+      ${notes.length === 0 ? `
+        <div class="empty-state">
+          <div class="icon">🗒️</div>
+          <p>لا توجد ملاحظات بعد.</p>
         </div>
-        ${notes.length === 0 ? `
-          <div class="empty-state">
-            <div class="icon">🗒️</div>
-            <p>لا توجد ملاحظات بعد هذا الشهر.</p>
-          </div>
-        ` : notes.slice().reverse().map(n => renderNote(n)).join('')}
-      </div>
+      ` : notes.slice().reverse().map(n => renderNote(n)).join('')}
     </div>
   `;
 }
 
 function renderNote(note) {
+  const dateLabel = formatNoteDate(note);
+  if (note.kind === 'checkbox') {
+    const checked = !!note.checked;
+    return `
+      <div class="note-item" style="display:flex;align-items:flex-start;gap:12px">
+        <div class="task-check ${checked ? 'checked' : ''}" onclick="event.stopPropagation(); toggleNoteChecked('${note.id}')" style="margin-top:2px">${checked ? '✓' : ''}</div>
+        <div style="flex:1;cursor:pointer" onclick="openEditNoteModal('${note.id}')">
+          <div class="note-time">🕒 ${escapeHtml(dateLabel)}</div>
+          <div class="note-text" style="${checked ? 'text-decoration:line-through;color:#9ca3af' : ''}">${escapeHtml(note.text)}</div>
+        </div>
+      </div>
+    `;
+  }
   return `
     <div class="note-item" onclick="openEditNoteModal('${note.id}')">
-      <div class="note-time">🕒 ${escapeHtml(note.time)}</div>
+      <div class="note-time">🕒 ${escapeHtml(dateLabel)}</div>
       <div class="note-text">${escapeHtml(note.text)}</div>
     </div>
   `;
 }
 
-function renderNotesTableView(list) {
-  const months = Object.keys(list.months || {}).sort().reverse();
-  if (!months.length) return `<div class="card"><p>لا توجد بيانات</p></div>`;
-  let html = '';
-  months.forEach(m => {
-    const notes = list.months[m].notes || [];
-    html += `<div class="card"><h2>${formatMonth(m)} <span style="font-size:13px;color:#6b7280;font-weight:400">(${notes.length} ملاحظة)</span></h2>`;
-    if (!notes.length) {
-      html += `<p class="hint">لا توجد ملاحظات</p>`;
-    } else {
-      notes.forEach(n => { html += renderNote(n); });
-    }
-    html += `</div>`;
-  });
-  return html;
-}
-
 function renderStats(list) {
   const months = Object.keys(list.months || {}).sort();
   if (!months.length) return '<p style="color:#6b7280">لا توجد بيانات بعد</p>';
-
-  if (list.type === 'notes') {
-    return months.map(m => {
-      const count = (list.months[m].notes || []).length;
-      const isCurrent = m === currentMonth;
-      return `
-        <div class="stat-card ${count > 0 ? 'done' : 'not-started'} ${isCurrent ? 'current' : ''}" onclick="goToMonth('${m}')">
-          <div class="stat-delete" onclick="event.stopPropagation(); deleteMonthData('${m}')" title="حذف بيانات هذا الشهر">×</div>
-          <div class="stat-month">${formatMonth(m).split(' ')[0]}</div>
-          <div class="stat-percent">${count}</div>
-          <div style="font-size:11px;color:#6b7280">ملاحظة</div>
-        </div>
-      `;
-    }).join('');
-  }
 
   return months.map(m => {
     const p = getMonthPercent(list, m);
@@ -970,6 +995,14 @@ function deleteMonthData(month) {
   if (!confirm(`هل أنت متأكد من حذف كل بيانات شهر ${formatMonth(month)}؟ لا يمكن التراجع عن هذا الإجراء.`)) return;
   delete list.months[month];
   if (month === currentMonth) currentMonth = getCurrentMonth();
+  save();
+  render();
+}
+
+function toggleManualDone() {
+  const list = data.lists.find(l => l.id === currentListId);
+  const monthData = list.months[currentMonth];
+  monthData.manualDone = !monthData.manualDone;
   save();
   render();
 }
@@ -1042,14 +1075,10 @@ function saveList() {
     list.name = name;
     list.icon = selectedListIcon;
   } else {
-    data.lists.push({
-      id: uid(),
-      name,
-      icon: selectedListIcon,
-      type: selectedListType,
-      tasks: [],
-      months: {}
-    });
+    data.lists.push(selectedListType === 'notes'
+      ? { id: uid(), name, icon: selectedListIcon, type: 'notes', notes: [] }
+      : { id: uid(), name, icon: selectedListIcon, type: 'todo', tasks: [], months: {} }
+    );
   }
   save();
   closeModal('listModal');
@@ -1154,25 +1183,23 @@ function deleteTask() {
 }
 
 // ---- Note modal ----
-function nowTimeStr() {
-  const d = new Date();
-  return d.toLocaleString('ar-EG', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-}
-
 function openNewNoteModal() {
   editingNoteId = null;
   document.getElementById('noteModalTitle').textContent = 'إضافة ملاحظة';
   document.getElementById('noteText').value = '';
+  document.getElementById('noteKind').value = 'text';
   document.getElementById('deleteNoteBtn').style.display = 'none';
   openModal('noteModal');
 }
 
 function openEditNoteModal(noteId) {
   const list = data.lists.find(l => l.id === currentListId);
-  const note = list.months[currentMonth].notes.find(n => n.id === noteId);
+  const note = (list.notes || []).find(n => n.id === noteId);
+  if (!note) return;
   editingNoteId = noteId;
   document.getElementById('noteModalTitle').textContent = 'تعديل الملاحظة';
   document.getElementById('noteText').value = note.text;
+  document.getElementById('noteKind').value = note.kind || 'text';
   document.getElementById('deleteNoteBtn').style.display = 'inline-block';
   openModal('noteModal');
 }
@@ -1180,14 +1207,29 @@ function openEditNoteModal(noteId) {
 function saveNote() {
   const text = document.getElementById('noteText').value.trim();
   if (!text) { alert('اكتب نص الملاحظة'); return; }
+  const kind = document.getElementById('noteKind').value;
   const list = data.lists.find(l => l.id === currentListId);
-  if (!list.months[currentMonth].notes) list.months[currentMonth].notes = [];
+  if (!list.notes) list.notes = [];
+  const nowIso = new Date().toISOString();
   if (editingNoteId) {
-    const note = list.months[currentMonth].notes.find(n => n.id === editingNoteId);
+    const note = list.notes.find(n => n.id === editingNoteId);
     note.text = text;
-    note.time = nowTimeStr();
+    note.kind = kind;
+    if (kind === 'checkbox') {
+      if (typeof note.checked !== 'boolean') note.checked = false;
+    } else {
+      delete note.checked;
+    }
+    note.updatedAt = nowIso;
   } else {
-    list.months[currentMonth].notes.push({ id: uid(), text, time: nowTimeStr() });
+    list.notes.push({
+      id: uid(),
+      kind,
+      text,
+      checked: kind === 'checkbox' ? false : undefined,
+      createdAt: nowIso,
+      updatedAt: null
+    });
   }
   save();
   closeModal('noteModal');
@@ -1197,9 +1239,19 @@ function saveNote() {
 function deleteNote() {
   if (!confirm('حذف هذه الملاحظة؟')) return;
   const list = data.lists.find(l => l.id === currentListId);
-  list.months[currentMonth].notes = list.months[currentMonth].notes.filter(n => n.id !== editingNoteId);
+  list.notes = (list.notes || []).filter(n => n.id !== editingNoteId);
   save();
   closeModal('noteModal');
+  render();
+}
+
+function toggleNoteChecked(noteId) {
+  const list = data.lists.find(l => l.id === currentListId);
+  const note = (list.notes || []).find(n => n.id === noteId);
+  if (!note) return;
+  note.checked = !note.checked;
+  note.updatedAt = new Date().toISOString();
+  save();
   render();
 }
 
@@ -1248,8 +1300,7 @@ function importBackup(event) {
       const imported = JSON.parse(e.target.result);
       if (!imported || !Array.isArray(imported.lists)) throw new Error('صيغة غير صالحة');
       if (!confirm('سيتم استبدال كل بياناتك الحالية بالنسخة المستوردة. متابعة؟')) return;
-      data = imported;
-      if (!data.version) data.version = 2;
+      data = migrateData(imported);
       save();
       currentListId = null;
       render();
