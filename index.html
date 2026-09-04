@@ -492,14 +492,68 @@
       <input type="text" id="fieldName" placeholder="مثال: تحويل كجم إلى رطل">
     </div>
     <div class="form-group">
-      <label>المعادلة</label>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <label style="margin-bottom:0">المعادلة</label>
+        <button type="button" class="btn-secondary" style="padding:4px 10px;font-size:13px" onclick="openModal('formulaHelpModal')">❓ كيف أكتبها؟</button>
+      </div>
       <input type="text" id="fieldFormula" placeholder="مثال: x * 2.20462">
-      <p class="hint">استخدم <b>x</b> ليمثل الرقم الذي سيتم إدخاله. مسموح بـ ‎+ - * / ^ ( )‎ ودوال مثل ‎Math.sqrt(x)‎ أو ‎Math.pow(x,2)‎</p>
+      <p class="hint">استخدم <b>x</b> ليمثل الرقم الذي سيتم إدخاله لاحقًا. مسموح بـ ‎+ - * / ^ ** ( )‎ ودوال مثل ‎Math.sqrt(x)‎ أو ‎Math.pow(x,2)‎ — اضغط "كيف أكتبها؟" لمزيد من الأمثلة.</p>
     </div>
     <div class="modal-actions">
       <button class="btn-danger" id="deleteFieldBtn" onclick="deleteField()" style="display:none;margin-left:auto">حذف</button>
       <button class="btn-secondary" onclick="closeModal('fieldModal')">إلغاء</button>
       <button class="btn-primary" onclick="saveField()">حفظ</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Formula writing help -->
+<div class="modal-overlay" id="formulaHelpModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">❓ كيف تكتب المعادلة بشكل صحيح</div>
+      <button class="close-btn" onclick="closeModal('formulaHelpModal')">×</button>
+    </div>
+    <div class="info-body">
+      <p>🔤 الرمز <b>x</b> يمثّل الرقم الذي سيُدخله المستخدم لاحقًا عند إضافة "إدخال". اكتب المعادلة بدلالة x فقط، وبدون علامة =.</p>
+      <br>
+      <p>➕ العمليات الحسابية المسموحة:</p>
+      <ul>
+        <li><b>+</b> جمع، <b>-</b> طرح، <b>*</b> ضرب، <b>/</b> قسمة</li>
+        <li><b>^</b> أو <b>**</b> للأس (القوة) — مثال: x^2 تعني x تربيع</li>
+        <li><b>( )</b> أقواس لتحديد أولوية الحساب</li>
+      </ul>
+      <br>
+      <p>🧮 دوال رياضية جاهزة (اكتبها كما هي بالإنجليزية):</p>
+      <ul>
+        <li><b>Math.sqrt(x)</b> — الجذر التربيعي</li>
+        <li><b>Math.pow(x,3)</b> — الأس (x أس 3)</li>
+        <li><b>Math.abs(x)</b> — القيمة المطلقة</li>
+        <li><b>Math.round(x)</b> — تقريب لأقرب عدد صحيح</li>
+        <li><b>Math.floor(x)</b> و <b>Math.ceil(x)</b> — تقريب لأسفل/أعلى</li>
+      </ul>
+      <br>
+      <p>💡 أمثلة جاهزة:</p>
+      <ul>
+        <li>تحويل كيلوجرام إلى رطل: <b>x * 2.20462</b></li>
+        <li>تحويل مئوي إلى فهرنهايت: <b>(x * 9/5) + 32</b></li>
+        <li>تحويل فهرنهايت إلى مئوي: <b>(x - 32) * 5/9</b></li>
+        <li>مربع الرقم: <b>x^2</b> أو <b>x**2</b></li>
+        <li>الجذر التربيعي: <b>Math.sqrt(x)</b></li>
+        <li>نسبة 15% من الرقم: <b>x * 0.15</b></li>
+        <li>إضافة ضريبة 15%: <b>x * 1.15</b></li>
+      </ul>
+      <br>
+      <p>⚠️ أخطاء شائعة يجب تجنّبها:</p>
+      <ul>
+        <li>استخدم النقطة للفاصلة العشرية <b>0.5</b> وليس الفاصلة <b>0,5</b></li>
+        <li>لا تكتب علامة <b>=</b> في بداية المعادلة</li>
+        <li>تأكد أن عدد الأقواس المفتوحة يساوي عدد الأقواس المغلقة</li>
+        <li>اكتب أسماء الدوال بحروف إنجليزية كبيرة/صغيرة كما هي: <b>Math.sqrt</b> وليس <b>math.sqrt</b></li>
+      </ul>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-primary" onclick="closeModal('formulaHelpModal')">فهمت</button>
     </div>
   </div>
 </div>
@@ -512,16 +566,13 @@
       <button class="close-btn" onclick="closeModal('entryModal')">×</button>
     </div>
     <div class="form-group">
-      <label>اختر الخانة (المعادلة)</label>
-      <select id="entryFieldId" onchange="updateEntryPreview()"></select>
-    </div>
-    <div class="form-group">
       <label>الرقم المُدخل</label>
       <input type="number" id="entryInputValue" step="any" placeholder="أدخل الرقم" oninput="updateEntryPreview()">
+      <p class="hint">سيتم تطبيق هذا الرقم على <b>كل المعادلات (الخانات)</b> المدرجة في هذه القائمة دفعة واحدة.</p>
     </div>
     <div class="form-group">
-      <label>النتيجة</label>
-      <div id="entryResultPreview" style="font-size:22px;font-weight:800;color:#667eea;padding:6px 0">—</div>
+      <label>النتائج</label>
+      <div id="entryResultsPreview"></div>
     </div>
     <div class="modal-actions">
       <button class="btn-danger" id="deleteEntryBtn" onclick="deleteEntry()" style="display:none;margin-left:auto">حذف</button>
@@ -594,7 +645,7 @@ function getCurrentMonth() {
 }
 
 // ============ Persistence ============
-const CURRENT_VERSION = 3;
+const CURRENT_VERSION = 4;
 
 function migrateData(parsed) {
   if (!parsed || !Array.isArray(parsed.lists)) parsed = { version: CURRENT_VERSION, lists: [] };
@@ -639,6 +690,26 @@ function migrateData(parsed) {
       }
     });
     parsed.version = 3;
+  }
+
+  // Migrate v3 -> v4: formula entries used to hold one field/result each;
+  // now a single entry holds one input number with results for every field.
+  if (parsed.version < 4) {
+    parsed.lists.forEach(list => {
+      if (list.type === 'formulas') {
+        list.entries = (list.entries || []).map(e => {
+          if (e.results) return e; // already in the new shape
+          return {
+            id: e.id || uid(),
+            inputValue: e.inputValue,
+            results: [{ fieldId: e.fieldId, fieldName: e.fieldName, formula: e.formula, result: e.result }],
+            createdAt: e.createdAt || null,
+            updatedAt: e.updatedAt || null
+          };
+        });
+      }
+    });
+    parsed.version = 4;
   }
 
   return parsed;
@@ -816,6 +887,7 @@ function renderListsView(app) {
             </div>
             ${badgeHtml}
           </div>
+          <button class="btn-danger" style="padding:8px 12px;flex-shrink:0" title="حذف القائمة" onclick="event.stopPropagation(); deleteList('${list.id}')">🗑️</button>
         </div>`;
     });
     html += `</div>`;
@@ -1072,8 +1144,10 @@ function renderStats(list) {
 // ---- Formulas list rendering ----
 function evaluateFormula(formula, x) {
   try {
+    // Allow users to write ^ for power (as documented), converting it to JS's ** operator.
+    const normalized = String(formula).replace(/\^/g, '**');
     // eslint-disable-next-line no-new-func
-    const fn = new Function('x', 'Math', '"use strict"; return (' + formula + ');');
+    const fn = new Function('x', 'Math', '"use strict"; return (' + normalized + ');');
     const result = fn(x, Math);
     if (typeof result !== 'number' || !isFinite(result)) return null;
     return Math.round(result * 1e6) / 1e6; // trim floating-point noise
@@ -1131,13 +1205,19 @@ function renderField(field, idx, total) {
 
 function renderEntry(entry, idx, total) {
   const dateLabel = formatNoteDate(entry);
+  const results = entry.results || [];
+  const resultsHtml = results.map(r => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-top:1px solid #eee">
+      <span style="font-size:13px;color:#555">${escapeHtml(r.fieldName)} <span class="hint" style="display:inline">(${escapeHtml(r.formula)})</span></span>
+      <span style="font-weight:800;color:#667eea">${r.result === null ? 'تعذّر الحساب' : escapeHtml(String(r.result))}</span>
+    </div>
+  `).join('');
   return `
     <div class="note-item" style="display:flex;align-items:flex-start;gap:12px">
       <div style="flex:1;cursor:pointer" onclick="openEditEntryModal('${entry.id}')">
         <div class="note-time">🕒 ${escapeHtml(dateLabel)}</div>
-        <div class="task-name">${escapeHtml(entry.fieldName)}</div>
-        <div class="hint">${escapeHtml(String(entry.inputValue))} → ${escapeHtml(entry.formula)}</div>
-        <div style="font-size:18px;font-weight:800;color:#667eea;margin-top:4px">${escapeHtml(String(entry.result))}</div>
+        <div class="task-name">الرقم المُدخل: ${escapeHtml(String(entry.inputValue))}</div>
+        ${resultsHtml}
       </div>
       <div class="reorder-controls">
         <button class="reorder-btn" onclick="event.stopPropagation(); moveEntry(${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>▲</button>
@@ -1154,6 +1234,16 @@ function moveList(index, direction) {
   const tmp = data.lists[index];
   data.lists[index] = data.lists[newIndex];
   data.lists[newIndex] = tmp;
+  save();
+  render();
+}
+
+function deleteList(id) {
+  const list = data.lists.find(l => l.id === id);
+  if (!list) return;
+  if (!confirm(`هل أنت متأكد من حذف القائمة "${list.name}"؟ سيتم حذف كل بياناتها (الالتزامات/الملاحظات/المعادلات والإدخالات) نهائيًا ولا يمكن التراجع عن هذا الإجراء.`)) return;
+  data.lists = data.lists.filter(l => l.id !== id);
+  if (currentListId === id) currentListId = null;
   save();
   render();
 }
@@ -1561,12 +1651,12 @@ function deleteField() {
 }
 
 // ---- Entry modal (formulas lists) ----
+// A single input number is applied to ALL formulas (fields) in the list at once.
 function openNewEntryModal() {
   const list = data.lists.find(l => l.id === currentListId);
   if (!list.fields || !list.fields.length) { alert('أضف خانة (معادلة) أولًا'); return; }
   editingEntryId = null;
   document.getElementById('entryModalTitle').textContent = 'إضافة إدخال';
-  populateEntryFieldSelect(list.fields[0].id);
   document.getElementById('entryInputValue').value = '';
   document.getElementById('deleteEntryBtn').style.display = 'none';
   updateEntryPreview();
@@ -1579,60 +1669,62 @@ function openEditEntryModal(entryId) {
   if (!entry) return;
   editingEntryId = entryId;
   document.getElementById('entryModalTitle').textContent = 'تعديل الإدخال';
-  populateEntryFieldSelect(entry.fieldId);
   document.getElementById('entryInputValue').value = entry.inputValue;
   document.getElementById('deleteEntryBtn').style.display = 'inline-block';
   updateEntryPreview();
   openModal('entryModal');
 }
 
-function populateEntryFieldSelect(selectedFieldId) {
-  const list = data.lists.find(l => l.id === currentListId);
-  const select = document.getElementById('entryFieldId');
-  select.innerHTML = (list.fields || []).map(f =>
-    `<option value="${f.id}" ${f.id === selectedFieldId ? 'selected' : ''}>${escapeHtml(f.name)} (${escapeHtml(f.formula)})</option>`
-  ).join('');
-}
-
 function updateEntryPreview() {
   const list = data.lists.find(l => l.id === currentListId);
-  const fieldId = document.getElementById('entryFieldId').value;
-  const field = (list.fields || []).find(f => f.id === fieldId);
+  const fields = list.fields || [];
   const raw = document.getElementById('entryInputValue').value;
-  const preview = document.getElementById('entryResultPreview');
-  if (!field || raw === '') { preview.textContent = '—'; return; }
-  const result = evaluateFormula(field.formula, Number(raw));
-  preview.textContent = result === null ? 'تعذّر الحساب' : result;
+  const container = document.getElementById('entryResultsPreview');
+  if (raw === '') {
+    container.innerHTML = '<div class="hint">أدخل رقمًا لعرض نتيجة كل المعادلات</div>';
+    return;
+  }
+  const x = Number(raw);
+  container.innerHTML = fields.map(f => {
+    const result = evaluateFormula(f.formula, x);
+    return `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f1f1">
+        <span style="font-weight:600">${escapeHtml(f.name)}</span>
+        <span style="font-weight:800;color:#667eea">${result === null ? 'تعذّر الحساب' : result}</span>
+      </div>
+    `;
+  }).join('');
 }
 
 function saveEntry() {
   const list = data.lists.find(l => l.id === currentListId);
-  const fieldId = document.getElementById('entryFieldId').value;
-  const field = (list.fields || []).find(f => f.id === fieldId);
+  const fields = list.fields || [];
   const raw = document.getElementById('entryInputValue').value;
-  if (!field) { alert('اختر خانة'); return; }
+  if (!fields.length) { alert('أضف خانة (معادلة) أولًا'); return; }
   if (raw === '') { alert('أدخل الرقم'); return; }
   const inputValue = Number(raw);
-  const result = evaluateFormula(field.formula, inputValue);
-  if (result === null) { alert('تعذّر حساب المعادلة على هذا الرقم'); return; }
+  const results = fields.map(f => ({
+    fieldId: f.id,
+    fieldName: f.name,
+    formula: f.formula,
+    result: evaluateFormula(f.formula, inputValue)
+  }));
+  if (results.every(r => r.result === null)) {
+    alert('تعذّر حساب أي من المعادلات على هذا الرقم');
+    return;
+  }
   if (!list.entries) list.entries = [];
   const nowIso = new Date().toISOString();
   if (editingEntryId) {
     const entry = list.entries.find(e => e.id === editingEntryId);
-    entry.fieldId = field.id;
-    entry.fieldName = field.name;
-    entry.formula = field.formula;
     entry.inputValue = inputValue;
-    entry.result = result;
+    entry.results = results;
     entry.updatedAt = nowIso;
   } else {
     list.entries.push({
       id: uid(),
-      fieldId: field.id,
-      fieldName: field.name,
-      formula: field.formula,
       inputValue,
-      result,
+      results,
       createdAt: nowIso,
       updatedAt: null
     });
