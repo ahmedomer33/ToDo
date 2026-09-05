@@ -813,6 +813,7 @@
   <div class="drawer-item" id="restoreLegacyBtn" style="display:none;background:rgba(249,115,22,0.18)" onclick="closeDrawer(); restoreLegacyData();">🗃️ <span>استعادة بياناتي القديمة (قبل الحسابات)</span></div>
   <div class="drawer-item" onclick="closeDrawer(); exportBackup();">⬇️ <span>تصدير نسخة احتياطية</span></div>
   <div class="drawer-item" onclick="closeDrawer(); triggerImport();">⬆️ <span>استيراد نسخة</span></div>
+  <div class="drawer-item" onclick="closeDrawer(); openWhatsNewModal();">🆕 <span>ما الجديد؟</span><span id="whatsNewDot" style="display:none;width:8px;height:8px;border-radius:50%;background:#F97316;margin-right:6px"></span></div>
   <div class="drawer-item" onclick="closeDrawer(); showInfoModal();">ℹ️ <span>كيف تُحفظ بياناتي؟</span></div>
   <div class="drawer-item" onclick="closeDrawer(); logout();">🚪 <span>تسجيل الخروج</span></div>
   <div class="hint" style="color:rgba(255,255,255,0.6);padding:10px" id="lastSavedInfo">لم يتم الحفظ بعد</div>
@@ -1116,6 +1117,20 @@
   </div>
 </div>
 
+<!-- Modal: What's New (changelog) -->
+<div class="modal-overlay" id="whatsNewModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">🆕 ما الجديد؟</div>
+      <button class="close-btn" onclick="closeModal('whatsNewModal')">×</button>
+    </div>
+    <div class="info-body" id="whatsNewBody"></div>
+    <div class="modal-actions">
+      <button class="btn-primary" onclick="closeModal('whatsNewModal')">تمام</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ============ Auth state ============
 let currentUser = null; // logged-in username, or null when signed out
@@ -1241,6 +1256,65 @@ function hasSeenOnboarding() {
 
 function markOnboardingSeen() {
   try { localStorage.setItem(ONBOARDING_SEEN_KEY, '1'); } catch (e) { /* ignore */ }
+}
+
+// ============ What's new (changelog) ============
+// A lightweight, on-device "what's new" log. WHATSNEW_SEEN_KEY remembers the
+// highest version the person has already seen, so the modal only pops up
+// automatically once per update — they can always reopen it from the drawer.
+const APP_RELEASE_VERSION = 17;
+const WHATSNEW_SEEN_KEY = 'todoAppWhatsNewSeenVersion';
+const CHANGELOG = [
+  {
+    version: 17,
+    title: 'إضافة "ما الجديد؟"',
+    items: [
+      'أُضيفت هذه النافذة نفسها: تعريف مختصر بكل تحديث جديد ينزل على التطبيق، متاح دائمًا من القائمة الجانبية ☰',
+      'تظهر تلقائيًا مرة واحدة فقط بعد كل تحديث فيه شيء جديد يستحق الإشارة إليه'
+    ]
+  },
+  {
+    version: 16,
+    title: 'تبسيط الشريط العلوي',
+    items: [
+      'إزالة زر الجرس 🔔 من الشريط العلوي لأنه لم يكن يقوم بأي شيء عند الضغط عليه (وكانت النقطة الحمراء عليه مجرد تكرار للتنبيه الظاهر أصلًا في الصفحة الرئيسية)',
+      'أصبح بإمكانك الآن الضغط على أيقونة حسابك (الأفاتار) في أعلى الشاشة للانتقال مباشرة إلى إعدادات الحساب'
+    ]
+  }
+];
+
+function hasSeenLatestWhatsNew() {
+  try { return Number(localStorage.getItem(WHATSNEW_SEEN_KEY) || 0) >= APP_RELEASE_VERSION; } catch (e) { return true; }
+}
+
+function markWhatsNewSeen() {
+  try { localStorage.setItem(WHATSNEW_SEEN_KEY, String(APP_RELEASE_VERSION)); } catch (e) { /* ignore */ }
+  const badge = document.getElementById('whatsNewDot');
+  if (badge) badge.style.display = 'none';
+}
+
+function renderWhatsNewBody() {
+  return CHANGELOG.map((entry, i) => `
+    <div style="margin-bottom:${i === CHANGELOG.length - 1 ? '0' : '18px'}">
+      <div style="font-weight:800;font-size:15.5px;color:var(--primary-text);margin-bottom:6px">🆕 ${escapeHtml(entry.title)} <span class="hint" style="display:inline">(v${entry.version})</span></div>
+      <ul style="margin-right:20px;line-height:1.8">
+        ${entry.items.map(t => `<li>${escapeHtml(t)}</li>`).join('')}
+      </ul>
+    </div>
+  `).join('');
+}
+
+function openWhatsNewModal() {
+  document.getElementById('whatsNewBody').innerHTML = renderWhatsNewBody();
+  markWhatsNewSeen();
+  openModal('whatsNewModal');
+}
+
+// Called once per app-start; shows the modal by itself only the first time
+// a person opens the app after a new update (per this browser/device).
+function maybeAutoShowWhatsNew() {
+  if (hasSeenLatestWhatsNew()) return;
+  openWhatsNewModal();
 }
 
 function renderOnboarding() {
@@ -1780,7 +1854,10 @@ function showApp() {
   const info = document.getElementById('lastSavedInfo');
   if (info) info.textContent = data.lastSaved ? ('آخر حفظ: ' + formatDateTime(data.lastSaved)) : 'لم يتم الحفظ بعد';
   updateRestoreLegacyVisibility();
+  const whatsNewDot = document.getElementById('whatsNewDot');
+  if (whatsNewDot) whatsNewDot.style.display = hasSeenLatestWhatsNew() ? 'none' : 'inline-block';
   render();
+  maybeAutoShowWhatsNew();
 }
 
 // Refreshes the small avatar circle in the header to reflect the current user's
