@@ -1,10 +1,13 @@
-const CACHE_NAME = 'todo-lists-cache-v8';
+const CACHE_NAME = 'todo-lists-cache-v11';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './icon-192.png',
-  './icon-512.png'
+  './icon-512.png',
+  './icon-192-maskable.png',
+  './icon-512-maskable.png',
+  './logo-icon.png'
 ];
 
 self.addEventListener('install', (event) => {

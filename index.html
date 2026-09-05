@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>قوائم التزاماتي الشهرية</title>
+<title>Focus Todo</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#14b8a6">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="التزاماتي">
+<meta name="apple-mobile-web-app-title" content="Focus Todo">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
@@ -243,6 +243,17 @@
     transition: background 0.15s;
   }
   .drawer-item:hover { background: rgba(255,255,255,0.12); }
+
+  /* Auth screen */
+  #authScreen { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+  .auth-card { max-width: 380px; width: 100%; margin: 0 auto; }
+  .auth-error {
+    background: #fee2e2; color: #991b1b; border-radius: 10px;
+    padding: 10px 12px; font-size: 13px; margin-bottom: 14px; display: none;
+  }
+  .auth-switch { text-align: center; margin-top: 14px; font-size: 14px; color: #6b7280; }
+  .auth-switch a { color: #14b8a6; font-weight: 700; cursor: pointer; text-decoration: none; }
+  .auth-switch a:hover { text-decoration: underline; }
 
   /* Alert banner */
   .alert-banner {
@@ -693,7 +704,9 @@
 </style>
 </head>
 <body>
-<div class="app-header-wrap">
+<div id="authScreen"></div>
+
+<div class="app-header-wrap" id="appHeaderWrap" style="display:none">
   <div class="app-header">
     <div class="icon-btn" onclick="toggleDrawer()" title="القائمة">☰</div>
     <div class="header-search">
@@ -702,7 +715,7 @@
     </div>
     <div class="header-actions">
       <div class="icon-btn" id="bellBtn" title="تنبيهات">🔔<span class="bell-dot" id="bellDot" style="display:none"></span></div>
-      <div class="avatar-circle">📋</div>
+      <div class="avatar-circle" id="avatarCircle" title="">📋</div>
     </div>
   </div>
 </div>
@@ -710,18 +723,23 @@
 <div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
 <div class="drawer" id="drawer">
   <div class="drawer-header">
-    <div class="drawer-title">📋 القائمة</div>
+    <div class="drawer-title" style="display:flex;align-items:center;gap:8px">
+      <img src="logo-icon.png" alt="Focus Todo" style="width:24px;height:24px">
+      Focus Todo
+    </div>
     <button class="close-btn" onclick="closeDrawer()">×</button>
   </div>
+  <div class="drawer-item" style="opacity:0.85;cursor:default">👤 <span id="drawerUsername">—</span></div>
   <div class="drawer-item" onclick="closeDrawer(); goBackToWorksheets();">🏠 <span>الرئيسية</span></div>
   <div class="drawer-item" onclick="closeDrawer(); exportBackup();">⬇️ <span>تصدير نسخة احتياطية</span></div>
   <div class="drawer-item" onclick="closeDrawer(); triggerImport();">⬆️ <span>استيراد نسخة</span></div>
   <div class="drawer-item" onclick="closeDrawer(); showInfoModal();">ℹ️ <span>كيف تُحفظ بياناتي؟</span></div>
+  <div class="drawer-item" onclick="closeDrawer(); logout();">🚪 <span>تسجيل الخروج</span></div>
   <div class="hint" style="color:rgba(255,255,255,0.6);padding:10px" id="lastSavedInfo">لم يتم الحفظ بعد</div>
 </div>
 <input type="file" id="importFileInput" accept="application/json" style="display:none" onchange="importBackup(event)">
 
-<div class="container" id="app"></div>
+<div class="container" id="app" style="display:none"></div>
 
 <!-- Modal: New/Edit Worksheet -->
 <div class="modal-overlay" id="worksheetModal">
@@ -991,6 +1009,8 @@
     <div class="info-body">
       <p>📌 يتم حفظ كل بياناتك <b>داخل متصفحك فقط</b> (localStorage)، وليس داخل ملف الـ HTML نفسه ولا على أي خادم.</p>
       <br>
+      <p>👤 كل حساب (اسم مستخدم) له بياناته الخاصة به فقط، منفصلة تمامًا عن باقي الحسابات على نفس الجهاز. لكن الحساب نفسه <b>محفوظ في هذا المتصفح فقط</b> — لن تجده إن فتحت التطبيق من متصفح أو جهاز آخر.</p>
+      <br>
       <p>⚠️ هذا يعني أن بياناتك قد <b>تُمسح</b> في الحالات التالية:</p>
       <ul>
         <li>مسح ذاكرة التخزين المؤقت (Cache) أو بيانات التصفح</li>
@@ -1002,12 +1022,12 @@
       <br>
       <p>✅ لحماية سجلّك بالكامل (History) بشكل دائم:</p>
       <ul>
-        <li>اضغط <b>"تصدير نسخة احتياطية"</b> بشكل دوري (كل أسبوع مثلًا)</li>
+        <li>اضغط <b>"تصدير نسخة احتياطية"</b> بشكل دوري (كل أسبوع مثلًا) — هذا يُصدّر بيانات حسابك الحالي فقط</li>
         <li>احفظ الملف الناتج (JSON) في مكان آمن مثل Google Drive أو iCloud</li>
-        <li>عند الحاجة، استخدم <b>"استيراد نسخة"</b> لاستعادة بياناتك على أي جهاز</li>
+        <li>عند الحاجة، سجّل دخولك بنفس اسم المستخدم على الجهاز الجديد، ثم استخدم <b>"استيراد نسخة"</b> لاستعادة بياناتك</li>
       </ul>
       <br>
-      <p class="hint">💡 نصيحة: افتح الملف دائمًا من نفس المتصفح ونفس المسار للحفاظ على استمرارية الحفظ التلقائي.</p>
+      <p class="hint">💡 نصيحة: افتح الملف دائمًا من نفس المتصفح ونفس المسار، وسجّل الدخول بنفس الحساب، للحفاظ على استمرارية الحفظ التلقائي.</p>
     </div>
     <div class="modal-actions">
       <button class="btn-primary" onclick="closeModal('infoModal')">فهمت</button>
@@ -1016,8 +1036,12 @@
 </div>
 
 <script>
+// ============ Auth state ============
+let currentUser = null; // logged-in username, or null when signed out
+let authMode = 'login'; // 'login' | 'signup'
+
 // ============ State ============
-let data = loadData();
+let data = { worksheets: [] }; // placeholder; real per-user data is loaded after login (see loadData())
 let currentWorksheetId = null;
 let searchQuery = '';
 let editingWorksheetId = null;
@@ -1222,11 +1246,237 @@ function migrateData(parsed) {
 
 function loadData() {
   let raw = null;
-  try { raw = localStorage.getItem('todoListsData'); } catch (e) { raw = null; }
+  try { raw = localStorage.getItem(getUserDataKey(currentUser)); } catch (e) { raw = null; }
   let parsed = null;
   try { parsed = raw ? JSON.parse(raw) : null; } catch (e) { parsed = null; }
   if (!parsed || typeof parsed !== 'object') parsed = { version: CURRENT_VERSION, worksheets: [] };
   return migrateData(parsed);
+}
+
+// ============ Multi-user accounts ============
+// Each user gets their own isolated data store (their own worksheets/lists),
+// kept under a per-user localStorage key so accounts never see each other's data.
+const USERS_DB_KEY = 'todoAppUsersDB';
+const SESSION_KEY = 'todoAppSession';
+
+function normalizeUsername(u) { return (u || '').trim().toLowerCase(); }
+
+function getUserDataKey(username) {
+  return 'todoListsData::' + normalizeUsername(username);
+}
+
+function loadUsersDB() {
+  let raw = null;
+  try { raw = localStorage.getItem(USERS_DB_KEY); } catch (e) { raw = null; }
+  let parsed = null;
+  try { parsed = raw ? JSON.parse(raw) : null; } catch (e) { parsed = null; }
+  if (!parsed || !Array.isArray(parsed.users)) parsed = { users: [] };
+  return parsed;
+}
+
+function saveUsersDB(db) {
+  try {
+    localStorage.setItem(USERS_DB_KEY, JSON.stringify(db));
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function findUserRecord(username) {
+  const norm = normalizeUsername(username);
+  return loadUsersDB().users.find(u => normalizeUsername(u.username) === norm) || null;
+}
+
+function loadSession() {
+  try { return localStorage.getItem(SESSION_KEY) || null; } catch (e) { return null; }
+}
+
+function saveSession(username) {
+  try { localStorage.setItem(SESSION_KEY, username); } catch (e) { /* ignore */ }
+}
+
+function clearSession() {
+  try { localStorage.removeItem(SESSION_KEY); } catch (e) { /* ignore */ }
+}
+
+function randomHex(byteLen) {
+  const arr = new Uint8Array(byteLen);
+  crypto.getRandomValues(arr);
+  return Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function sha256Hex(text) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function hashPassword(password, salt) {
+  return sha256Hex(salt + '::' + password);
+}
+
+// ---- Auth screen (login / signup) ----
+function renderAuthScreen() {
+  const el = document.getElementById('authScreen');
+  const isLogin = authMode === 'login';
+  el.innerHTML = `
+    <div class="container">
+      <div class="card auth-card">
+        <img src="logo-icon.png" alt="Focus Todo" style="width:64px;height:64px;display:block;margin:0 auto 8px">
+        <h1 style="text-align:center;font-size:22px">Focus Todo</h1>
+        <p class="hint" style="text-align:center;margin-top:-14px;margin-bottom:14px;letter-spacing:1px">DEEP WORK</p>
+        <div class="view-toggle">
+          <button class="${isLogin ? 'active' : ''}" onclick="setAuthMode('login')">تسجيل الدخول</button>
+          <button class="${!isLogin ? 'active' : ''}" onclick="setAuthMode('signup')">إنشاء حساب</button>
+        </div>
+        <div class="auth-error" id="authError"></div>
+        <div class="form-group">
+          <label>اسم المستخدم</label>
+          <input type="text" id="authUsername" placeholder="اسم المستخدم" autocomplete="username" onkeydown="onAuthKeydown(event)">
+        </div>
+        <div class="form-group">
+          <label>كلمة المرور</label>
+          <input type="password" id="authPassword" placeholder="كلمة المرور" autocomplete="${isLogin ? 'current-password' : 'new-password'}" onkeydown="onAuthKeydown(event)">
+        </div>
+        ${!isLogin ? `
+        <div class="form-group">
+          <label>تأكيد كلمة المرور</label>
+          <input type="password" id="authPasswordConfirm" placeholder="أعد كتابة كلمة المرور" autocomplete="new-password" onkeydown="onAuthKeydown(event)">
+        </div>` : ''}
+        <button class="btn-primary" style="width:100%;margin-top:6px" onclick="${isLogin ? 'handleLogin()' : 'handleSignup()'}">${isLogin ? '🔓 دخول' : '✨ إنشاء الحساب'}</button>
+        <div class="auth-switch">
+          ${isLogin
+            ? `ليس لديك حساب؟ <a onclick="setAuthMode('signup')">أنشئ حسابًا جديدًا</a>`
+            : `لديك حساب بالفعل؟ <a onclick="setAuthMode('login')">سجّل الدخول</a>`}
+        </div>
+      </div>
+    </div>
+  `;
+  const firstInput = document.getElementById('authUsername');
+  if (firstInput) firstInput.focus();
+}
+
+function setAuthMode(mode) {
+  authMode = mode;
+  renderAuthScreen();
+}
+
+function onAuthKeydown(event) {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    if (authMode === 'login') handleLogin(); else handleSignup();
+  }
+}
+
+function showAuthError(msg) {
+  const el = document.getElementById('authError');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function validUsername(username) {
+  return /^[a-zA-Z0-9_\u0600-\u06FF]{3,30}$/.test(username);
+}
+
+async function handleSignup() {
+  const username = (document.getElementById('authUsername').value || '').trim();
+  const password = document.getElementById('authPassword').value || '';
+  const confirmPassword = document.getElementById('authPasswordConfirm').value || '';
+
+  if (!username || !validUsername(username)) {
+    return showAuthError('اسم المستخدم يجب أن يكون 3 أحرف على الأقل، ويحتوي على حروف/أرقام فقط بدون مسافات.');
+  }
+  if (password.length < 4) {
+    return showAuthError('كلمة المرور يجب أن تكون 4 أحرف على الأقل.');
+  }
+  if (password !== confirmPassword) {
+    return showAuthError('كلمتا المرور غير متطابقتين.');
+  }
+  if (findUserRecord(username)) {
+    return showAuthError('اسم المستخدم هذا مستخدم بالفعل، جرّب اسمًا آخر.');
+  }
+
+  const salt = randomHex(16);
+  const passwordHash = await hashPassword(password, salt);
+  const db = loadUsersDB();
+  db.users.push({ username, salt, passwordHash, createdAt: new Date().toISOString() });
+  if (!saveUsersDB(db)) {
+    return showAuthError('⚠️ تعذّر إنشاء الحساب في هذا المتصفح.');
+  }
+
+  currentUser = username;
+  saveSession(username);
+  data = loadData();
+  showApp();
+}
+
+async function handleLogin() {
+  const username = (document.getElementById('authUsername').value || '').trim();
+  const password = document.getElementById('authPassword').value || '';
+
+  if (!username || !password) {
+    return showAuthError('أدخل اسم المستخدم وكلمة المرور.');
+  }
+  const user = findUserRecord(username);
+  if (!user) {
+    return showAuthError('لا يوجد حساب بهذا الاسم.');
+  }
+  const hash = await hashPassword(password, user.salt);
+  if (hash !== user.passwordHash) {
+    return showAuthError('كلمة المرور غير صحيحة.');
+  }
+
+  currentUser = user.username;
+  saveSession(currentUser);
+  data = loadData();
+  showApp();
+}
+
+function logout() {
+  if (!confirm('هل تريد تسجيل الخروج من حسابك؟')) return;
+  clearSession();
+  currentUser = null;
+  currentWorksheetId = null;
+  currentListId = null;
+  authMode = 'login';
+  showAuthScreen();
+}
+
+function showApp() {
+  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('appHeaderWrap').style.display = '';
+  document.getElementById('app').style.display = '';
+  const avatar = document.getElementById('avatarCircle');
+  if (avatar) {
+    avatar.textContent = (currentUser || '?').trim().charAt(0).toUpperCase();
+    avatar.title = currentUser || '';
+  }
+  const drawerUsername = document.getElementById('drawerUsername');
+  if (drawerUsername) drawerUsername.textContent = currentUser || '—';
+  const info = document.getElementById('lastSavedInfo');
+  if (info) info.textContent = data.lastSaved ? ('آخر حفظ: ' + formatDateTime(data.lastSaved)) : 'لم يتم الحفظ بعد';
+  render();
+}
+
+function showAuthScreen() {
+  document.getElementById('appHeaderWrap').style.display = 'none';
+  document.getElementById('app').style.display = 'none';
+  closeDrawer();
+  document.getElementById('authScreen').style.display = 'block';
+  renderAuthScreen();
+}
+
+function initAuth() {
+  const session = loadSession();
+  if (session && findUserRecord(session)) {
+    currentUser = session;
+    data = loadData();
+    showApp();
+  } else {
+    clearSession();
+    showAuthScreen();
+  }
 }
 
 // `data.lists` is a transient pointer to the *currently open* worksheet's lists array
@@ -1241,7 +1491,7 @@ function getSerializableData() {
 function save() {
   data.lastSaved = new Date().toISOString();
   try {
-    localStorage.setItem('todoListsData', JSON.stringify(getSerializableData()));
+    localStorage.setItem(getUserDataKey(currentUser), JSON.stringify(getSerializableData()));
     const info = document.getElementById('lastSavedInfo');
     if (info) info.textContent = 'آخر حفظ: ' + formatDateTime(data.lastSaved);
   } catch (e) {
@@ -1513,8 +1763,8 @@ function renderListsView(app) {
   let html = `
     <div class="page-header">
       <button class="icon-btn" onclick="goBackToWorksheets()" title="العودة">→</button>
-      <div class="page-header-icon">📋</div>
-      <h1>قوائمي</h1>
+      <div class="page-header-icon"><img src="logo-icon.png" alt="Focus Todo" style="width:24px;height:24px"></div>
+      <h1>Focus Todo</h1>
     </div>
   `;
 
@@ -3285,11 +3535,7 @@ function importBackup(event) {
 }
 
 // ============ Init ============
-if (data.lastSaved) {
-  const info = document.getElementById('lastSavedInfo');
-  if (info) info.textContent = 'آخر حفظ: ' + formatDateTime(data.lastSaved);
-}
-render();
+initAuth();
 
 // ---- Header: drawer + search ----
 function toggleDrawer() {
