@@ -731,6 +731,7 @@
   </div>
   <div class="drawer-item" style="opacity:0.85;cursor:default">👤 <span id="drawerUsername">—</span></div>
   <div class="drawer-item" onclick="closeDrawer(); goBackToWorksheets();">🏠 <span>الرئيسية</span></div>
+  <div class="drawer-item" id="restoreLegacyBtn" style="display:none;background:rgba(249,115,22,0.18)" onclick="closeDrawer(); restoreLegacyData();">🗃️ <span>استعادة بياناتي القديمة (قبل الحسابات)</span></div>
   <div class="drawer-item" onclick="closeDrawer(); exportBackup();">⬇️ <span>تصدير نسخة احتياطية</span></div>
   <div class="drawer-item" onclick="closeDrawer(); triggerImport();">⬆️ <span>استيراد نسخة</span></div>
   <div class="drawer-item" onclick="closeDrawer(); showInfoModal();">ℹ️ <span>كيف تُحفظ بياناتي؟</span></div>
@@ -1258,11 +1259,71 @@ function loadData() {
 // kept under a per-user localStorage key so accounts never see each other's data.
 const USERS_DB_KEY = 'todoAppUsersDB';
 const SESSION_KEY = 'todoAppSession';
+// Before multi-user accounts existed, all data lived under this single shared key.
+const LEGACY_DATA_KEY = 'todoListsData';
 
 function normalizeUsername(u) { return (u || '').trim().toLowerCase(); }
 
 function getUserDataKey(username) {
   return 'todoListsData::' + normalizeUsername(username);
+}
+
+function hasLegacyData() {
+  let raw = null;
+  try { raw = localStorage.getItem(LEGACY_DATA_KEY); } catch (e) { raw = null; }
+  if (!raw) return false;
+  try {
+    const parsed = JSON.parse(raw);
+    return !!(parsed && (Array.isArray(parsed.lists) ? parsed.lists.length : (parsed.worksheets || []).length));
+  } catch (e) {
+    return false;
+  }
+}
+
+// Silently migrates the old pre-accounts data into a user's slot, but only if
+// that user doesn't already have data of their own (never overwrites anything).
+function migrateLegacyDataIfNeeded(username) {
+  let legacyRaw = null;
+  try { legacyRaw = localStorage.getItem(LEGACY_DATA_KEY); } catch (e) { legacyRaw = null; }
+  if (!legacyRaw) return false;
+  let alreadyHasOwnData = null;
+  try { alreadyHasOwnData = localStorage.getItem(getUserDataKey(username)); } catch (e) { /* ignore */ }
+  if (alreadyHasOwnData) return false;
+  try {
+    localStorage.setItem(getUserDataKey(username), legacyRaw);
+    localStorage.removeItem(LEGACY_DATA_KEY); // consumed, so it won't be offered/migrated again
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+// Manual recovery path: lets an already-logged-in user pull the old pre-accounts
+// data into their *current* account, in case the automatic migration on first
+// signup didn't apply to them (e.g. they'd already created their account earlier).
+function restoreLegacyData() {
+  let legacyRaw = null;
+  try { legacyRaw = localStorage.getItem(LEGACY_DATA_KEY); } catch (e) { legacyRaw = null; }
+  if (!legacyRaw) { alert('لا توجد بيانات قديمة (قبل الحسابات) في هذا المتصفح.'); return; }
+  let parsed = null;
+  try { parsed = JSON.parse(legacyRaw); } catch (e) { parsed = null; }
+  if (!parsed) { alert('تعذّر قراءة البيانات القديمة، الملف غير صالح.'); return; }
+  if (!confirm('سيتم استبدال كل بيانات حسابك الحالي ببياناتك القديمة (المحفوظة قبل تفعيل الحسابات). هل تريد المتابعة؟')) return;
+
+  data = migrateData(parsed);
+  currentWorksheetId = null;
+  currentListId = null;
+  data.lists = undefined;
+  save();
+  try { localStorage.removeItem(LEGACY_DATA_KEY); } catch (e) { /* ignore */ }
+  updateRestoreLegacyVisibility();
+  render();
+  alert('تم استرجاع بياناتك القديمة بنجاح ✅');
+}
+
+function updateRestoreLegacyVisibility() {
+  const btn = document.getElementById('restoreLegacyBtn');
+  if (btn) btn.style.display = hasLegacyData() ? 'flex' : 'none';
 }
 
 function loadUsersDB() {
@@ -1400,6 +1461,7 @@ async function handleSignup() {
   const salt = randomHex(16);
   const passwordHash = await hashPassword(password, salt);
   const db = loadUsersDB();
+  const isFirstUserEver = db.users.length === 0;
   db.users.push({ username, salt, passwordHash, createdAt: new Date().toISOString() });
   if (!saveUsersDB(db)) {
     return showAuthError('⚠️ تعذّر إنشاء الحساب في هذا المتصفح.');
@@ -1407,8 +1469,15 @@ async function handleSignup() {
 
   currentUser = username;
   saveSession(username);
+  let migrated = false;
+  if (isFirstUserEver) {
+    migrated = migrateLegacyDataIfNeeded(username);
+  }
   data = loadData();
   showApp();
+  if (migrated) {
+    alert('تم استرجاع بياناتك القديمة (المحفوظة قبل تفعيل الحسابات) تلقائيًا داخل حسابك الجديد ✅');
+  }
 }
 
 async function handleLogin() {
@@ -1456,6 +1525,7 @@ function showApp() {
   if (drawerUsername) drawerUsername.textContent = currentUser || '—';
   const info = document.getElementById('lastSavedInfo');
   if (info) info.textContent = data.lastSaved ? ('آخر حفظ: ' + formatDateTime(data.lastSaved)) : 'لم يتم الحفظ بعد';
+  updateRestoreLegacyVisibility();
   render();
 }
 
