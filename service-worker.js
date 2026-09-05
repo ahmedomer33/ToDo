@@ -1,4 +1,4 @@
-const CACHE_NAME = 'todo-lists-cache-v13';
+const CACHE_NAME = 'todo-lists-cache-v14';
 const ASSETS = [
   './',
   './index.html',
