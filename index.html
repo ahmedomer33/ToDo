@@ -257,6 +257,28 @@
   .auth-switch a { color: #14b8a6; font-weight: 700; cursor: pointer; text-decoration: none; }
   .auth-switch a:hover { text-decoration: underline; }
 
+  /* Onboarding (first-run intro) */
+  #onboardingScreen {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(160deg, #f0fdfa 0%, #eef6f4 60%);
+  }
+  .onboarding-card { max-width: 400px; width: 100%; margin: 0 auto; text-align: center; }
+  .onboarding-icon {
+    width: 110px; height: 110px; border-radius: 30px; margin: 0 auto 20px;
+    background: linear-gradient(135deg, #14b8a6, #115e59);
+    display: flex; align-items: center; justify-content: center; font-size: 52px;
+    box-shadow: 0 10px 30px rgba(20,184,166,0.25);
+  }
+  .onboarding-title { font-size: 21px; font-weight: 800; margin-bottom: 10px; }
+  .onboarding-desc { color: #6b7280; font-size: 15px; line-height: 1.7; margin-bottom: 26px; min-height: 76px; }
+  .onboarding-dots { display: flex; justify-content: center; gap: 7px; margin-bottom: 22px; }
+  .onboarding-dot { width: 8px; height: 8px; border-radius: 50%; background: #d1d5db; transition: all 0.2s; }
+  .onboarding-dot.active { width: 22px; border-radius: 5px; background: #14b8a6; }
+  .onboarding-actions { display: flex; gap: 10px; }
+  .onboarding-skip { text-align: center; margin-top: 16px; }
+  .onboarding-skip a { color: #9ca3af; font-size: 14px; cursor: pointer; text-decoration: none; }
+  .onboarding-skip a:hover { text-decoration: underline; }
+
   /* Alert banner */
   .alert-banner {
     background: linear-gradient(90deg, #f97316, #ea580c);
@@ -743,6 +765,7 @@
 </style>
 </head>
 <body>
+<div id="onboardingScreen" style="display:none"></div>
 <div id="authScreen"></div>
 
 <div class="app-header-wrap" id="appHeaderWrap" style="display:none">
@@ -772,6 +795,7 @@
   <div class="drawer-item" onclick="closeDrawer(); goBackToWorksheets();">🏠 <span>الرئيسية</span></div>
   <div class="drawer-item" onclick="closeDrawer(); openSettingsScreen();">⚙️ <span>إعدادات الحساب</span></div>
   <div class="drawer-item" id="adminDrawerItem" style="display:none;background:rgba(251,191,36,0.18)" onclick="closeDrawer(); openAdminScreen();">👑 <span>لوحة الأدمن</span></div>
+  <div class="drawer-item" onclick="replayOnboarding();">📖 <span>جولة تعريفية بالتطبيق</span></div>
   <div class="drawer-item" id="restoreLegacyBtn" style="display:none;background:rgba(249,115,22,0.18)" onclick="closeDrawer(); restoreLegacyData();">🗃️ <span>استعادة بياناتي القديمة (قبل الحسابات)</span></div>
   <div class="drawer-item" onclick="closeDrawer(); exportBackup();">⬇️ <span>تصدير نسخة احتياطية</span></div>
   <div class="drawer-item" onclick="closeDrawer(); triggerImport();">⬆️ <span>استيراد نسخة</span></div>
@@ -1083,6 +1107,7 @@
 let currentUser = null; // logged-in username, or null when signed out
 let authMode = 'login'; // 'login' | 'signup'
 let appScreen = null; // null (normal app) | 'settings' | 'admin'
+let onboardingStep = 0;
 
 // ============ State ============
 let data = { worksheets: [] }; // placeholder; real per-user data is loaded after login (see loadData())
@@ -1115,6 +1140,87 @@ const WEEKDAY_NAMES_SHORT = ['أحد','اثنين','ثلاثاء','أربعاء'
 const ARABIC_MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 
 const INPUT_TYPE_LABELS = { checkbox: '✅ خانة اختيار', text: '📝 نص', number: '🔢 رقم', dropdown: '📋 قائمة' };
+
+// ============ Onboarding (first-run intro) ============
+const ONBOARDING_SEEN_KEY = 'todoAppOnboardingSeen';
+const ONBOARDING_SLIDES = [
+  { icon: '🗂️', title: 'مرحبًا بك في Focus Todo', desc: 'نظّم كل مهامك ومشاريعك في "أوراق عمل" منفصلة، كل ورقة عمل تضم القوائم الخاصة بها.' },
+  { icon: '📋', title: 'أنواع متعددة من القوائم', desc: 'قوائم مهام شهرية، ملاحظات نصية أو جداول، معادلات حسابية، أو متابعة عادات وعبادات — كل نوع بطريقة عرض تناسبه.' },
+  { icon: '🕌', title: 'تتبع العادات والعبادات', desc: 'تابع مهامك اليومية مع عرض التاريخ الميلادي والهجري واسم اليوم، وشاهد إحصائيات إنجازك يوميًا وأسبوعيًا وشهريًا.' },
+  { icon: '👤', title: 'حسابك الخاص', desc: 'أنشئ حسابًا بكلمة مرور، وخصّص صورتك الشخصية، وأدر إعداداتك من شاشة الإعدادات في أي وقت.' },
+  { icon: '📶', title: 'يعمل بدون إنترنت', desc: 'كل بياناتك محفوظة على جهازك فقط ولا تُرسل لأي خادم، والتطبيق يعمل حتى بدون اتصال. يمكنك دائمًا تصدير نسخة احتياطية من القائمة الجانبية.' }
+];
+
+function hasSeenOnboarding() {
+  try { return localStorage.getItem(ONBOARDING_SEEN_KEY) === '1'; } catch (e) { return true; }
+}
+
+function markOnboardingSeen() {
+  try { localStorage.setItem(ONBOARDING_SEEN_KEY, '1'); } catch (e) { /* ignore */ }
+}
+
+function renderOnboarding() {
+  const el = document.getElementById('onboardingScreen');
+  const slide = ONBOARDING_SLIDES[onboardingStep];
+  const isLast = onboardingStep === ONBOARDING_SLIDES.length - 1;
+  el.innerHTML = `
+    <div class="card onboarding-card">
+      <div class="onboarding-icon">${slide.icon}</div>
+      <div class="onboarding-title">${escapeHtml(slide.title)}</div>
+      <div class="onboarding-desc">${escapeHtml(slide.desc)}</div>
+      <div class="onboarding-dots">
+        ${ONBOARDING_SLIDES.map((_, i) => `<div class="onboarding-dot ${i === onboardingStep ? 'active' : ''}"></div>`).join('')}
+      </div>
+      <div class="onboarding-actions">
+        ${onboardingStep > 0 ? `<button class="btn-secondary" style="flex:1" onclick="onboardingPrev()">السابق</button>` : ''}
+        <button class="btn-primary" style="flex:2" onclick="onboardingNext()">${isLast ? '🚀 ابدأ الآن' : 'التالي'}</button>
+      </div>
+      ${!isLast ? `<div class="onboarding-skip"><a onclick="finishOnboarding()">تخطي</a></div>` : ''}
+    </div>
+  `;
+}
+
+function onboardingNext() {
+  if (onboardingStep < ONBOARDING_SLIDES.length - 1) {
+    onboardingStep++;
+    renderOnboarding();
+  } else {
+    finishOnboarding();
+  }
+}
+
+function onboardingPrev() {
+  if (onboardingStep > 0) {
+    onboardingStep--;
+    renderOnboarding();
+  }
+}
+
+function finishOnboarding() {
+  markOnboardingSeen();
+  document.getElementById('onboardingScreen').style.display = 'none';
+  initAuth();
+}
+
+// Lets an already-logged-in user replay the intro on demand (from the drawer).
+function replayOnboarding() {
+  onboardingStep = 0;
+  document.getElementById('appHeaderWrap').style.display = 'none';
+  document.getElementById('app').style.display = 'none';
+  closeDrawer();
+  document.getElementById('onboardingScreen').style.display = 'flex';
+  renderOnboarding();
+}
+
+function initApp() {
+  if (hasSeenOnboarding()) {
+    initAuth();
+  } else {
+    onboardingStep = 0;
+    document.getElementById('onboardingScreen').style.display = 'flex';
+    renderOnboarding();
+  }
+}
 
 function getCurrentMonth() {
   const d = new Date();
@@ -3875,7 +3981,7 @@ function importBackup(event) {
 }
 
 // ============ Init ============
-initAuth();
+initApp();
 
 // ---- Header: drawer + search ----
 function toggleDrawer() {
