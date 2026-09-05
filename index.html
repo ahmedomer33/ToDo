@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>قوائم التزاماتي الشهرية</title>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#667eea">
+<meta name="theme-color" content="#14b8a6">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -15,7 +15,13 @@
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
   body {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    overflow-x: hidden;
+    background: #eef6f4;
+    background-image:
+      radial-gradient(circle at 8% 10%, rgba(20,184,166,0.14) 0%, rgba(20,184,166,0) 45%),
+      radial-gradient(circle at 95% 30%, rgba(249,115,22,0.10) 0%, rgba(249,115,22,0) 40%),
+      radial-gradient(circle at 15% 95%, rgba(20,184,166,0.10) 0%, rgba(20,184,166,0) 45%);
+    background-attachment: fixed;
     min-height: 100vh;
     padding: 20px;
     color: #333;
@@ -23,12 +29,13 @@
   .container { max-width: 900px; margin: 0 auto; }
   .card {
     background: #fff;
-    border-radius: 16px;
+    border-radius: 18px;
     padding: 24px;
     margin-bottom: 20px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    box-shadow: 0 4px 24px rgba(15,118,110,0.08);
+    border: 1px solid rgba(15,118,110,0.06);
   }
-  h1 { color: #fff; text-align: center; margin-bottom: 20px; font-size: 28px; }
+  h1 { color: #134e4a; text-align: right; margin-bottom: 20px; font-size: 26px; font-weight: 800; }
   h2 { margin-bottom: 16px; color: #444; }
   button {
     cursor: pointer;
@@ -40,12 +47,12 @@
     transition: all 0.2s;
   }
   button:hover { transform: translateY(-2px); }
-  .btn-primary { background: #667eea; color: #fff; }
-  .btn-primary:hover { background: #5568d3; }
+  .btn-primary { background: #14b8a6; color: #fff; }
+  .btn-primary:hover { background: #0d9488; }
   .btn-success { background: #10b981; color: #fff; }
   .btn-danger { background: #ef4444; color: #fff; }
   .btn-secondary { background: #e5e7eb; color: #374151; }
-  .btn-warning { background: #f59e0b; color: #fff; }
+  .btn-warning { background: #f97316; color: #fff; }
   input, select, textarea {
     width: 100%;
     padding: 10px 14px;
@@ -56,7 +63,7 @@
     transition: border 0.2s;
     font-family: inherit;
   }
-  input:focus, select:focus, textarea:focus { border-color: #667eea; }
+  input:focus, select:focus, textarea:focus { border-color: #14b8a6; }
   .form-group { margin-bottom: 14px; }
   .form-group label { display: block; margin-bottom: 6px; font-weight: 600; color: #555; }
 
@@ -65,19 +72,29 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 14px;
-    background: #f9fafb;
-    border-radius: 12px;
+    padding: 12px 14px;
+    background: #fff;
+    border-radius: 14px;
     margin-bottom: 10px;
     cursor: pointer;
     transition: all 0.2s;
-    border: 2px solid transparent;
+    border: 1px solid #eef2f1;
   }
-  .list-item:hover { border-color: #667eea; background: #f3f4f6; }
+  .list-item:hover { border-color: #14b8a6; box-shadow: 0 4px 14px rgba(15,118,110,0.08); }
   .list-info { display: flex; align-items: center; gap: 12px; }
-  .list-icon { font-size: 28px; }
-  .list-name { font-weight: 600; font-size: 16px; }
-  .list-count { color: #6b7280; font-size: 13px; }
+  .list-icon {
+    font-size: 22px;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #e6f7f4;
+    border-radius: 12px;
+  }
+  .list-name { font-weight: 700; font-size: 15px; color: #134e4a; }
+  .list-count { color: #6b7280; font-size: 13px; margin-top: 2px; }
 
   /* Month view */
   .month-header {
@@ -91,6 +108,166 @@
   .month-title { font-size: 22px; font-weight: 700; color: #444; }
   .month-nav { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .month-nav button { padding: 8px 14px; font-size: 14px; }
+
+  /* ===== Dashboard header ===== */
+  .app-header-wrap {
+    position: sticky;
+    top: 0;
+    z-index: 60;
+    background: #eef6f4;
+    padding: 12px 0 10px 0;
+    margin: -20px -20px 16px -20px;
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+  .app-header {
+    max-width: 900px;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 16px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 4px 20px rgba(15,118,110,0.08);
+  }
+  .icon-btn {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    border-radius: 12px;
+    background: #f1f5f4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    cursor: pointer;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .icon-btn:hover { background: #e6efed; }
+  .header-search {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #f1f5f4;
+    border-radius: 12px;
+    padding: 0 12px;
+    min-width: 0;
+  }
+  .header-search input {
+    border: none;
+    background: transparent;
+    padding: 10px 0;
+    width: 100%;
+  }
+  .header-search input:focus { border: none; }
+  .header-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .bell-dot {
+    position: absolute;
+    top: 6px;
+    left: 8px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #f97316;
+    border: 2px solid #fff;
+  }
+  .avatar-circle {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #14b8a6, #115e59);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  /* Drawer */
+  .drawer-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    z-index: 70;
+    display: none;
+  }
+  .drawer-overlay.open { display: block; }
+  .drawer {
+    position: fixed;
+    top: 0;
+    right: -300px;
+    width: 270px;
+    max-width: 80vw;
+    height: 100%;
+    background: linear-gradient(180deg, #134e4a, #0f766e);
+    color: #fff;
+    z-index: 80;
+    transition: right 0.25s ease;
+    padding: 18px;
+    box-shadow: -6px 0 24px rgba(0,0,0,0.2);
+  }
+  .drawer.open { right: 0; }
+  .drawer-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+  .drawer-title { font-size: 18px; font-weight: 800; }
+  .drawer .close-btn { background: rgba(255,255,255,0.15); color: #fff; width: 32px; height: 32px; border-radius: 8px; font-size: 18px; }
+  .drawer-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 10px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 15px;
+    margin-bottom: 4px;
+    transition: background 0.15s;
+  }
+  .drawer-item:hover { background: rgba(255,255,255,0.12); }
+
+  /* Alert banner */
+  .alert-banner {
+    background: linear-gradient(90deg, #f97316, #ea580c);
+    color: #fff;
+    border-radius: 16px;
+    padding: 16px 18px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    cursor: default;
+  }
+  .alert-icon {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+  .alert-title { font-weight: 700; font-size: 15px; }
+  .alert-sub { font-size: 13px; opacity: 0.92; margin-top: 2px; }
+
+  /* Overview donut rings */
+  .rings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 14px;
+    text-align: center;
+  }
+  .ring-label { font-weight: 700; font-size: 13px; color: #374151; margin-top: 8px; }
+  .ring-sub { font-size: 12px; color: #9ca3af; }
+  .ring-percent {
+    font-size: 20px;
+    font-weight: 800;
+    fill: #134e4a;
+  }
 
   /* Status badge */
   .status-badge {
@@ -134,7 +311,7 @@
   .task-check {
     width: 24px;
     height: 24px;
-    border: 2px solid #667eea;
+    border: 2px solid #14b8a6;
     border-radius: 6px;
     cursor: pointer;
     display: flex;
@@ -170,7 +347,7 @@
     border: 2px solid transparent;
     transition: all 0.2s;
   }
-  .note-item:hover { border-color: #667eea; }
+  .note-item:hover { border-color: #14b8a6; }
   .note-time { font-size: 12px; color: #6b7280; margin-bottom: 4px; font-weight: 600; }
   .note-title { font-weight: 700; font-size: 15.5px; margin-bottom: 4px; color: #1f2937; }
   .note-text { white-space: pre-wrap; line-height: 1.6; }
@@ -183,7 +360,7 @@
   .note-show-more {
     background: none;
     border: none;
-    color: #667eea;
+    color: #14b8a6;
     font-weight: 700;
     font-size: 13px;
     padding: 6px 0 0;
@@ -305,7 +482,7 @@
     border: 2px solid transparent;
   }
   .icon-option:hover { background: #e5e7eb; }
-  .icon-option.selected { background: #667eea; border-color: #667eea; transform: scale(1.1); }
+  .icon-option.selected { background: #14b8a6; border-color: #14b8a6; transform: scale(1.1); }
 
   /* Type selector (todo vs notes) */
   .type-selector { display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap: 10px; }
@@ -317,7 +494,7 @@
     cursor: pointer;
     transition: all 0.2s;
   }
-  .type-option.selected { border-color: #667eea; background: #eef0ff; }
+  .type-option.selected { border-color: #14b8a6; background: #eef0ff; }
   .type-option.locked { opacity: 0.5; cursor: not-allowed; }
   .type-option .hint { margin-top: 4px; }
 
@@ -336,7 +513,7 @@
   /* Table view */
   table { width: 100%; border-collapse: collapse; }
   th, td { padding: 10px; text-align: center; border: 1px solid #e5e7eb; }
-  th { background: #667eea; color: #fff; font-weight: 600; }
+  th { background: #14b8a6; color: #fff; font-weight: 600; }
   td.completed-cell { background: #d1fae5; }
   td.pending-cell { background: #fee2e2; }
 
@@ -358,7 +535,7 @@
   }
   .table-wrapper thead th:first-child {
     z-index: 4;
-    background: #667eea;
+    background: #14b8a6;
     color: #fff;
   }
 
@@ -403,7 +580,7 @@
   }
   .stat-delete:hover { background: #ef4444; color: #fff; }
   .stat-card:hover { transform: translateY(-3px); }
-  .stat-card.current { border-color: #667eea; }
+  .stat-card.current { border-color: #14b8a6; }
   .stat-card.done { background: #d1fae5; }
   .stat-card.in-progress { background: #fef3c7; }
   .stat-card.not-started { background: #fee2e2; }
@@ -419,7 +596,7 @@
 
   /* Habit tracker */
   .habit-date-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #14b8a6 0%, #115e59 100%);
     color: #fff;
     border-radius: 14px;
     padding: 16px 18px;
@@ -432,7 +609,7 @@
   .habit-day-nav { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
   .habit-view-toggle { display: flex; gap: 8px; margin-bottom: 16px; }
   .habit-view-toggle button { flex: 1; font-size: 13px; padding: 9px 6px; }
-  .habit-view-toggle button.active { background: #667eea; color: #fff; }
+  .habit-view-toggle button.active { background: #14b8a6; color: #fff; }
   table.habit-table th.day-col, table.habit-table td.day-col { min-width: 46px; font-size: 12px; }
   table.habit-table th .day-col-name { display: block; font-size: 10px; font-weight: 500; opacity: 0.85; }
   table.habit-table td.today-col { background: #eef0ff; }
@@ -442,7 +619,7 @@
     position: sticky;
     top: 0;
     z-index: 3;
-    background: #667eea;
+    background: #14b8a6;
     color: #fff;
   }
   .habit-table-wrapper table.habit-table th:first-child,
@@ -455,7 +632,7 @@
   }
   .habit-table-wrapper table.habit-table thead th:first-child {
     z-index: 4;
-    background: #667eea;
+    background: #14b8a6;
     color: #fff;
   }
   .hijri-adjust-btn {
@@ -476,7 +653,7 @@
 
   .view-toggle { display: flex; gap: 8px; margin-bottom: 16px; }
   .view-toggle button { flex: 1; }
-  .view-toggle button.active { background: #667eea; color: #fff; }
+  .view-toggle button.active { background: #14b8a6; color: #fff; }
 
   .back-btn { margin-bottom: 16px; }
   .hint { font-size: 13px; color: #6b7280; margin-top: 6px; }
@@ -496,6 +673,34 @@
 </style>
 </head>
 <body>
+<div class="app-header-wrap">
+  <div class="app-header">
+    <div class="icon-btn" onclick="toggleDrawer()" title="القائمة">☰</div>
+    <div class="header-search">
+      <span>🔎</span>
+      <input type="text" id="globalSearchInput" placeholder="ابحث..." oninput="onSearchInput(this.value)">
+    </div>
+    <div class="header-actions">
+      <div class="icon-btn" id="bellBtn" title="تنبيهات">🔔<span class="bell-dot" id="bellDot" style="display:none"></span></div>
+      <div class="avatar-circle">📋</div>
+    </div>
+  </div>
+</div>
+
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-header">
+    <div class="drawer-title">📋 القائمة</div>
+    <button class="close-btn" onclick="closeDrawer()">×</button>
+  </div>
+  <div class="drawer-item" onclick="closeDrawer(); goBackToWorksheets();">🏠 <span>الرئيسية</span></div>
+  <div class="drawer-item" onclick="closeDrawer(); exportBackup();">⬇️ <span>تصدير نسخة احتياطية</span></div>
+  <div class="drawer-item" onclick="closeDrawer(); triggerImport();">⬆️ <span>استيراد نسخة</span></div>
+  <div class="drawer-item" onclick="closeDrawer(); showInfoModal();">ℹ️ <span>كيف تُحفظ بياناتي؟</span></div>
+  <div class="hint" style="color:rgba(255,255,255,0.6);padding:10px" id="lastSavedInfo">لم يتم الحفظ بعد</div>
+</div>
+<input type="file" id="importFileInput" accept="application/json" style="display:none" onchange="importBackup(event)">
+
 <div class="container" id="app"></div>
 
 <!-- Modal: New/Edit Worksheet -->
@@ -794,6 +999,7 @@
 // ============ State ============
 let data = loadData();
 let currentWorksheetId = null;
+let searchQuery = '';
 let editingWorksheetId = null;
 let currentListId = null;
 let currentMonth = getCurrentMonth(); // YYYY-MM
@@ -1140,25 +1346,96 @@ function render() {
   }
 }
 
+function renderDonutRing(percent, color, size) {
+  size = size || 88;
+  const stroke = 9;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const p = Math.max(0, Math.min(100, percent));
+  const offset = c - (p / 100) * c;
+  return `
+    <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+      <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="#eef2f1" stroke-width="${stroke}"></circle>
+      <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${color}" stroke-width="${stroke}"
+        stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${offset}"
+        transform="rotate(-90 ${size/2} ${size/2})"></circle>
+      <text x="50%" y="54%" text-anchor="middle" class="ring-percent">${p}%</text>
+    </svg>
+  `;
+}
+
+function computeGlobalStats() {
+  let totalLists = 0, doneCount = 0, notStartedCount = 0, inProgressCount = 0, sumPercent = 0, trackable = 0;
+  (data.worksheets || []).forEach(ws => {
+    (ws.lists || []).forEach(list => {
+      totalLists++;
+      let p = null;
+      if (list.type === 'todo') p = getMonthPercent(list, getCurrentMonth());
+      else if (list.type === 'habits') p = getHabitDayPercent(list, getCurrentDateStr());
+      if (p !== null) {
+        trackable++;
+        sumPercent += p;
+        if (p === 100) doneCount++;
+        else if (p === 0) notStartedCount++;
+        else inProgressCount++;
+      }
+    });
+  });
+  const avg = trackable ? Math.round(sumPercent / trackable) : 0;
+  return { totalLists, doneCount, notStartedCount, inProgressCount, avg, trackable };
+}
+
+function updateBellDot(show) {
+  const dot = document.getElementById('bellDot');
+  if (dot) dot.style.display = show ? 'block' : 'none';
+}
+
 function renderWorksheetsView(app) {
   let html = `<h1>🗂️ أوراق العمل</h1>`;
 
-  html += `
-    <div class="card">
-      <div class="backup-bar">
+  const stats = computeGlobalStats();
+  const hasAlert = stats.notStartedCount > 0;
+  updateBellDot(hasAlert);
+
+  if (stats.trackable > 0) {
+    html += `
+      <div class="alert-banner" style="${hasAlert ? '' : 'background:linear-gradient(90deg,#14b8a6,#0d9488)'}">
+        <div class="alert-icon">${hasAlert ? '⚠️' : '✅'}</div>
         <div>
-          <div style="font-weight:700">💾 نسخة احتياطية للبيانات</div>
-          <div class="hint" id="lastSavedInfo">${data.lastSaved ? 'آخر حفظ: ' + formatDateTime(data.lastSaved) : 'لم يتم الحفظ بعد'}</div>
-        </div>
-        <div class="backup-actions">
-          <button class="btn-success" onclick="exportBackup()">⬇️ تصدير نسخة احتياطية</button>
-          <button class="btn-secondary" onclick="triggerImport()">⬆️ استيراد نسخة</button>
-          <button class="btn-secondary" onclick="showInfoModal()">ℹ️ كيف تُحفظ بياناتي؟</button>
+          <div class="alert-title">${hasAlert ? 'تنبيه' : 'ممتاز! 🎉'}</div>
+          <div class="alert-sub">${hasAlert ? `${stats.notStartedCount} قائمة لم يبدأ العمل عليها بعد` : 'كل قوائمك القابلة للتتبع بدأت العمل عليها'}</div>
         </div>
       </div>
-      <input type="file" id="importFileInput" accept="application/json" style="display:none" onchange="importBackup(event)">
-    </div>
-  `;
+
+      <div class="card">
+        <h2 style="margin-bottom:14px">📊 نظرة عامة</h2>
+        <div class="rings-grid">
+          <div>
+            ${renderDonutRing(stats.avg, '#14b8a6')}
+            <div class="ring-label">متوسط الإنجاز</div>
+            <div class="ring-sub">عبر ${stats.trackable} قائمة</div>
+          </div>
+          <div>
+            ${renderDonutRing(stats.trackable ? Math.round(stats.doneCount / stats.trackable * 100) : 0, '#10b981')}
+            <div class="ring-label">مكتملة</div>
+            <div class="ring-sub">${stats.doneCount} من ${stats.trackable}</div>
+          </div>
+          <div>
+            ${renderDonutRing(stats.trackable ? Math.round(stats.inProgressCount / stats.trackable * 100) : 0, '#f59e0b')}
+            <div class="ring-label">قيد التنفيذ</div>
+            <div class="ring-sub">${stats.inProgressCount} من ${stats.trackable}</div>
+          </div>
+          <div>
+            ${renderDonutRing(stats.trackable ? Math.round(stats.notStartedCount / stats.trackable * 100) : 0, '#ef4444')}
+            <div class="ring-label">لم تبدأ</div>
+            <div class="ring-sub">${stats.notStartedCount} من ${stats.trackable}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  const filteredWorksheets = data.worksheets.filter(ws => !searchQuery || ws.name.toLowerCase().includes(searchQuery));
 
   if (!data.worksheets.length) {
     html += `
@@ -1171,13 +1448,21 @@ function renderWorksheetsView(app) {
           <button class="btn-primary" onclick="openNewWorksheetModal()">+ إنشاء ورقة عمل</button>
         </div>
       </div>`;
+  } else if (!filteredWorksheets.length) {
+    html += `
+      <div class="card">
+        <div class="empty-state">
+          <div class="icon">🔎</div>
+          <p>لا توجد نتائج مطابقة لـ "${escapeHtml(searchQuery)}"</p>
+        </div>
+      </div>`;
   } else {
     html += `<div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
         <h2 style="margin:0">اختر ورقة عمل</h2>
         <button class="btn-primary" onclick="openNewWorksheetModal()">+ ورقة جديدة</button>
       </div>`;
-    data.worksheets.forEach(ws => {
+    filteredWorksheets.forEach(ws => {
       const count = (ws.lists || []).length;
       html += `
         <div class="list-item">
@@ -1217,12 +1502,25 @@ function renderListsView(app) {
         </div>
       </div>`;
   } else {
+    const filteredLists = data.lists
+      .map((list, idx) => ({ list, idx }))
+      .filter(({ list }) => !searchQuery || list.name.toLowerCase().includes(searchQuery));
+
     html += `<div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
         <h2 style="margin:0">🗂️ ${escapeHtml((data.worksheets.find(w => w.id === currentWorksheetId) || {}).name || '')}</h2>
         <button class="btn-primary" onclick="openNewListModal()">+ قائمة جديدة</button>
       </div>`;
-    data.lists.forEach((list, idx) => {
+
+    if (!filteredLists.length) {
+      html += `
+        <div class="empty-state">
+          <div class="icon">🔎</div>
+          <p>لا توجد نتائج مطابقة لـ "${escapeHtml(searchQuery)}"</p>
+        </div>`;
+    }
+
+    filteredLists.forEach(({ list, idx }) => {
       let subtitle, badgeHtml;
       if (list.type === 'notes') {
         const count = getNoteCount(list);
@@ -1772,7 +2070,7 @@ function renderEntry(entry, idx, total) {
   const resultsHtml = results.map(r => `
     <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-top:1px solid #eee">
       <span style="font-size:13px;color:#555">${escapeHtml(r.fieldName)} <span class="hint" style="display:inline">(${escapeHtml(r.formula)})</span></span>
-      <span style="font-weight:800;color:#667eea">${r.result === null ? 'تعذّر الحساب' : escapeHtml(String(r.result))}</span>
+      <span style="font-weight:800;color:#14b8a6">${r.result === null ? 'تعذّر الحساب' : escapeHtml(String(r.result))}</span>
     </div>
   `).join('');
   return `
@@ -2041,10 +2339,11 @@ function openList(id) {
   currentHabitWeekStart = getWeekStart(currentHabitDate);
   currentHabitMonth = currentHabitDate.slice(0, 7);
   habitViewMode = 'card';
+  resetSearch();
   render();
 }
 
-function goBack() { currentListId = null; render(); }
+function goBack() { currentListId = null; resetSearch(); render(); }
 function setView(v) { viewMode = v; render(); }
 
 // ---- Worksheets ----
@@ -2055,6 +2354,7 @@ function openWorksheet(id) {
   currentWorksheetId = id;
   data.lists = ws.lists;
   currentListId = null;
+  resetSearch();
   render();
 }
 
@@ -2062,6 +2362,7 @@ function goBackToWorksheets() {
   currentWorksheetId = null;
   currentListId = null;
   data.lists = undefined;
+  resetSearch();
   render();
 }
 
@@ -2839,7 +3140,7 @@ function updateEntryPreview() {
     return `
       <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f1f1">
         <span style="font-weight:600">${escapeHtml(f.name)}</span>
-        <span style="font-weight:800;color:#667eea">${result === null ? 'تعذّر الحساب' : result}</span>
+        <span style="font-weight:800;color:#14b8a6">${result === null ? 'تعذّر الحساب' : result}</span>
       </div>
     `;
   }).join('');
@@ -2953,7 +3254,30 @@ function importBackup(event) {
 }
 
 // ============ Init ============
+if (data.lastSaved) {
+  const info = document.getElementById('lastSavedInfo');
+  if (info) info.textContent = 'آخر حفظ: ' + formatDateTime(data.lastSaved);
+}
 render();
+
+// ---- Header: drawer + search ----
+function toggleDrawer() {
+  document.getElementById('drawer').classList.add('open');
+  document.getElementById('drawerOverlay').classList.add('open');
+}
+function closeDrawer() {
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('drawerOverlay').classList.remove('open');
+}
+function onSearchInput(v) {
+  searchQuery = v.trim().toLowerCase();
+  render();
+}
+function resetSearch() {
+  searchQuery = '';
+  const el = document.getElementById('globalSearchInput');
+  if (el) el.value = '';
+}
 
 // ---- PWA: register service worker (enables offline use + installability) ----
 if ('serviceWorker' in navigator) {
