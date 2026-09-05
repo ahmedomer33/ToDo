@@ -36,6 +36,21 @@
     border: 1px solid rgba(15,118,110,0.06);
   }
   h1 { color: #134e4a; text-align: right; margin-bottom: 20px; font-size: 26px; font-weight: 800; }
+
+  .page-header { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+  .page-header h1 { margin: 0; font-size: 20px; }
+  .page-header-icon {
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    border-radius: 13px;
+    background: #e6f7f4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
   h2 { margin-bottom: 16px; color: #444; }
   button {
     cursor: pointer;
@@ -51,7 +66,8 @@
   .btn-primary:hover { background: #0d9488; }
   .btn-success { background: #10b981; color: #fff; }
   .btn-danger { background: #ef4444; color: #fff; }
-  .btn-secondary { background: #e5e7eb; color: #374151; }
+  .btn-secondary { background: #eef2f1; color: #134e4a; }
+  .btn-secondary:hover { background: #e2ebe9; }
   .btn-warning { background: #f97316; color: #fff; }
   input, select, textarea {
     width: 100%;
@@ -281,9 +297,9 @@
   .status-not-started { background: #fee2e2; color: #991b1b; }
   .status-in-progress { background: #fef3c7; color: #92400e; }
   .status-done { background: #d1fae5; color: #065f46; }
-  .status-notes { background: #e0e7ff; color: #3730a3; }
+  .status-notes { background: #dbeafe; color: #1e40af; }
   .status-formulas { background: #fef9c3; color: #854d0e; }
-  .status-habits { background: #dcfce7; color: #166534; }
+  .status-habits { background: #ccf1ea; color: #0f766e; }
 
   /* Reorder controls */
   .reorder-controls { display: flex; flex-direction: column; gap: 3px; flex-shrink: 0; }
@@ -302,12 +318,15 @@
   .task-item {
     display: flex;
     align-items: center;
-    padding: 12px;
-    background: #f9fafb;
-    border-radius: 10px;
+    padding: 12px 14px;
+    background: #fff;
+    border: 1px solid #eef2f1;
+    border-radius: 14px;
     margin-bottom: 8px;
     gap: 12px;
+    transition: all 0.2s;
   }
+  .task-item:hover { border-color: #cde9e4; box-shadow: 0 2px 10px rgba(15,118,110,0.06); }
   .task-check {
     width: 24px;
     height: 24px;
@@ -329,8 +348,8 @@
   .task-value-row { width: 100%; }
   .task-type-tag {
     font-size: 11px;
-    background: #eef0ff;
-    color: #4338ca;
+    background: #e6f7f4;
+    color: #0f766e;
     padding: 2px 8px;
     border-radius: 10px;
     margin-right: 6px;
@@ -339,17 +358,17 @@
 
   /* Notes */
   .note-item {
-    background: #f9fafb;
-    border-radius: 10px;
+    background: #fff;
+    border-radius: 14px;
     padding: 12px 14px;
     margin-bottom: 10px;
     cursor: pointer;
-    border: 2px solid transparent;
+    border: 1px solid #eef2f1;
     transition: all 0.2s;
   }
-  .note-item:hover { border-color: #14b8a6; }
+  .note-item:hover { border-color: #14b8a6; box-shadow: 0 2px 10px rgba(15,118,110,0.06); }
   .note-time { font-size: 12px; color: #6b7280; margin-bottom: 4px; font-weight: 600; }
-  .note-title { font-weight: 700; font-size: 15.5px; margin-bottom: 4px; color: #1f2937; }
+  .note-title { font-weight: 700; font-size: 15.5px; margin-bottom: 4px; color: #134e4a; }
   .note-text { white-space: pre-wrap; line-height: 1.6; }
   .note-text.clamped {
     display: -webkit-box;
@@ -370,8 +389,8 @@
   .note-kind-tag {
     display: inline-block;
     font-size: 11px;
-    background: #eef0ff;
-    color: #4338ca;
+    background: #e6f7f4;
+    color: #0f766e;
     padding: 2px 8px;
     border-radius: 10px;
     font-weight: 700;
@@ -381,10 +400,10 @@
   /* Mini table (inside note items) */
   .note-mini-table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 13.5px; }
   .note-mini-table th, .note-mini-table td { padding: 6px 8px; border: 1px solid #e5e7eb; text-align: center; }
-  .note-mini-table th { background: #eef0ff; color: #3730a3; font-weight: 700; }
+  .note-mini-table th { background: #e6f7f4; color: #0f766e; font-weight: 700; }
 
   /* Table editor (inside note modal) */
-  .table-editor { background: #f9fafb; border-radius: 10px; padding: 10px; }
+  .table-editor { background: #f7faf9; border-radius: 10px; padding: 10px; }
   .table-editor-scroll { overflow-x: auto; }
   .table-editor table { border-collapse: collapse; width: 100%; }
   .table-editor th, .table-editor td { padding: 4px; border: 1px solid #e5e7eb; }
@@ -400,14 +419,14 @@
   .progress-bar {
     width: 100%;
     height: 10px;
-    background: #e5e7eb;
+    background: #eef2f1;
     border-radius: 10px;
     overflow: hidden;
     margin: 10px 0;
   }
   .progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, #10b981, #059669);
+    background: linear-gradient(90deg, #14b8a6, #0d9488);
     transition: width 0.3s;
   }
   .progress-text { font-size: 14px; color: #6b7280; text-align: center; }
@@ -416,7 +435,7 @@
   .modal-overlay {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.5);
+    background: rgba(15,46,44,0.45);
     display: none;
     align-items: center;
     justify-content: center;
@@ -426,7 +445,7 @@
   .modal-overlay.active { display: flex; }
   .modal {
     background: #fff;
-    border-radius: 16px;
+    border-radius: 20px;
     padding: 24px;
     max-width: 500px;
     width: 100%;
@@ -444,14 +463,15 @@
     align-items: center;
     margin-bottom: 16px;
   }
-  .modal-title { font-size: 20px; font-weight: 700; }
+  .modal-title { font-size: 20px; font-weight: 800; color: #134e4a; }
   .close-btn {
-    background: none;
-    font-size: 24px;
+    background: #f1f5f4;
+    font-size: 20px;
     color: #6b7280;
     padding: 0;
     width: 32px;
     height: 32px;
+    border-radius: 10px;
   }
   .modal-actions {
     display: flex;
@@ -494,7 +514,7 @@
     cursor: pointer;
     transition: all 0.2s;
   }
-  .type-option.selected { border-color: #14b8a6; background: #eef0ff; }
+  .type-option.selected { border-color: #14b8a6; background: #e6f7f4; }
   .type-option.locked { opacity: 0.5; cursor: not-allowed; }
   .type-option .hint { margin-top: 4px; }
 
@@ -612,7 +632,7 @@
   .habit-view-toggle button.active { background: #14b8a6; color: #fff; }
   table.habit-table th.day-col, table.habit-table td.day-col { min-width: 46px; font-size: 12px; }
   table.habit-table th .day-col-name { display: block; font-size: 10px; font-weight: 500; opacity: 0.85; }
-  table.habit-table td.today-col { background: #eef0ff; }
+  table.habit-table td.today-col { background: #e6f7f4; }
   .habit-table-wrapper { overflow: auto; max-height: 65vh; position: relative; }
   .habit-table-wrapper table.habit-table { border-collapse: separate; border-spacing: 0; }
   .habit-table-wrapper table.habit-table thead th {
@@ -1391,7 +1411,12 @@ function updateBellDot(show) {
 }
 
 function renderWorksheetsView(app) {
-  let html = `<h1>🗂️ أوراق العمل</h1>`;
+  let html = `
+    <div class="page-header">
+      <div class="page-header-icon">🗂️</div>
+      <h1>أوراق العمل</h1>
+    </div>
+  `;
 
   const stats = computeGlobalStats();
   const hasAlert = stats.notStartedCount > 0;
@@ -1486,8 +1511,11 @@ function renderWorksheetsView(app) {
 
 function renderListsView(app) {
   let html = `
-    <h1>📋 قوائمي</h1>
-    <button class="btn-secondary back-btn" onclick="goBackToWorksheets()">→ العودة لأوراق العمل</button>
+    <div class="page-header">
+      <button class="icon-btn" onclick="goBackToWorksheets()" title="العودة">→</button>
+      <div class="page-header-icon">📋</div>
+      <h1>قوائمي</h1>
+    </div>
   `;
 
   if (!data.lists.length) {
@@ -1583,8 +1611,11 @@ function renderDetailView(app) {
   if (!list) { currentListId = null; render(); return; }
 
   let html = `
-    <h1>${list.icon} ${escapeHtml(list.name)}</h1>
-    <button class="btn-secondary back-btn" onclick="goBack()">→ العودة للقوائم</button>
+    <div class="page-header">
+      <button class="icon-btn" onclick="goBack()" title="العودة">→</button>
+      <div class="page-header-icon">${list.icon}</div>
+      <h1>${escapeHtml(list.name)}</h1>
+    </div>
   `;
 
   if (list.type === 'notes') {
@@ -1664,7 +1695,7 @@ function renderMonthView(list, status, percent, completed, isCurrentMonth) {
           <div class="month-title">${formatMonth(currentMonth)}</div>
           <span class="status-badge status-${status}">${statusLabel(status)}</span>
           ${manualDone ? '<span class="status-badge" style="background:#ede9fe;color:#5b21b6">✋ تحديد يدوي</span>' : ''}
-          ${!isCurrentMonth ? '<span class="status-badge" style="background:#e0e7ff;color:#3730a3">‹› شهر سابق</span>' : ''}
+          ${!isCurrentMonth ? '<span class="status-badge" style="background:#eef2f1;color:#134e4a">‹› شهر سابق</span>' : ''}
         </div>
         ${renderMonthNav(isCurrentMonth)}
       </div>
