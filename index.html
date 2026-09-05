@@ -202,7 +202,9 @@
     justify-content: center;
     font-size: 18px;
     flex-shrink: 0;
+    overflow: hidden;
   }
+  .avatar-circle img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
 
   /* Drawer */
   .drawer-overlay {
@@ -625,6 +627,43 @@
   }
   .empty-state .icon { font-size: 60px; margin-bottom: 12px; }
 
+  /* Account settings / admin screens */
+  .avatar-edit-wrap { position: relative; width: 96px; height: 96px; margin: 0 auto; }
+  .avatar-lg {
+    width: 96px; height: 96px; border-radius: 50%; object-fit: cover;
+    background: linear-gradient(135deg, #14b8a6, #115e59);
+    color: #fff; display: flex; align-items: center; justify-content: center;
+    font-size: 38px; font-weight: 800;
+  }
+  .avatar-edit-btn {
+    position: absolute; bottom: -2px; left: -2px;
+    width: 32px; height: 32px; border-radius: 50%;
+    background: #14b8a6; color: #fff; border: 3px solid #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; cursor: pointer;
+  }
+  .admin-badge {
+    background: #fef3c7; color: #92400e; font-size: 11px;
+    padding: 3px 8px; border-radius: 8px; font-weight: 700; margin-right: 6px;
+  }
+  .settings-section-title { font-weight: 800; font-size: 15px; margin-bottom: 10px; }
+  .danger-zone { border: 1px solid #fecaca; background: #fef2f2; border-radius: 12px; padding: 14px; }
+  .admin-user-row {
+    display: flex; align-items: center; gap: 10px; padding: 10px 0;
+    border-bottom: 1px solid #eef2f1;
+  }
+  .admin-user-row:last-child { border-bottom: none; }
+  .avatar-sm {
+    width: 34px; height: 34px; border-radius: 50%; object-fit: cover; flex-shrink: 0;
+    background: linear-gradient(135deg, #14b8a6, #115e59);
+    color: #fff; display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700;
+  }
+  .admin-stat-box {
+    text-align: center; background: #f0fdfa; border-radius: 12px; padding: 16px; margin-bottom: 16px;
+  }
+  .admin-stat-box .num { font-size: 34px; font-weight: 800; color: #115e59; }
+
   /* Habit tracker */
   .habit-date-header {
     background: linear-gradient(135deg, #14b8a6 0%, #115e59 100%);
@@ -731,6 +770,8 @@
   </div>
   <div class="drawer-item" style="opacity:0.85;cursor:default">👤 <span id="drawerUsername">—</span></div>
   <div class="drawer-item" onclick="closeDrawer(); goBackToWorksheets();">🏠 <span>الرئيسية</span></div>
+  <div class="drawer-item" onclick="closeDrawer(); openSettingsScreen();">⚙️ <span>إعدادات الحساب</span></div>
+  <div class="drawer-item" id="adminDrawerItem" style="display:none;background:rgba(251,191,36,0.18)" onclick="closeDrawer(); openAdminScreen();">👑 <span>لوحة الأدمن</span></div>
   <div class="drawer-item" id="restoreLegacyBtn" style="display:none;background:rgba(249,115,22,0.18)" onclick="closeDrawer(); restoreLegacyData();">🗃️ <span>استعادة بياناتي القديمة (قبل الحسابات)</span></div>
   <div class="drawer-item" onclick="closeDrawer(); exportBackup();">⬇️ <span>تصدير نسخة احتياطية</span></div>
   <div class="drawer-item" onclick="closeDrawer(); triggerImport();">⬆️ <span>استيراد نسخة</span></div>
@@ -739,6 +780,7 @@
   <div class="hint" style="color:rgba(255,255,255,0.6);padding:10px" id="lastSavedInfo">لم يتم الحفظ بعد</div>
 </div>
 <input type="file" id="importFileInput" accept="application/json" style="display:none" onchange="importBackup(event)">
+<input type="file" id="avatarFileInput" accept="image/*" style="display:none" onchange="handleAvatarFile(event)">
 
 <div class="container" id="app" style="display:none"></div>
 
@@ -1040,6 +1082,7 @@
 // ============ Auth state ============
 let currentUser = null; // logged-in username, or null when signed out
 let authMode = 'login'; // 'login' | 'signup'
+let appScreen = null; // null (normal app) | 'settings' | 'admin'
 
 // ============ State ============
 let data = { worksheets: [] }; // placeholder; real per-user data is loaded after login (see loadData())
@@ -1349,6 +1392,24 @@ function findUserRecord(username) {
   return loadUsersDB().users.find(u => normalizeUsername(u.username) === norm) || null;
 }
 
+// One-time backfill: if this browser's user DB predates the isAdmin/avatar fields
+// (or has no admin for any other reason), grant admin to the earliest-created account.
+function ensureAdminExists() {
+  const db = loadUsersDB();
+  if (!db.users.length) return;
+  let changed = false;
+  db.users.forEach(u => {
+    if (typeof u.avatar === 'undefined') { u.avatar = null; changed = true; }
+    if (typeof u.isAdmin === 'undefined') { u.isAdmin = false; changed = true; }
+  });
+  if (!db.users.some(u => u.isAdmin)) {
+    const earliest = db.users.slice().sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''))[0];
+    earliest.isAdmin = true;
+    changed = true;
+  }
+  if (changed) saveUsersDB(db);
+}
+
 function loadSession() {
   try { return localStorage.getItem(SESSION_KEY) || null; } catch (e) { return null; }
 }
@@ -1462,7 +1523,7 @@ async function handleSignup() {
   const passwordHash = await hashPassword(password, salt);
   const db = loadUsersDB();
   const isFirstUserEver = db.users.length === 0;
-  db.users.push({ username, salt, passwordHash, createdAt: new Date().toISOString() });
+  db.users.push({ username, salt, passwordHash, avatar: null, isAdmin: isFirstUserEver, createdAt: new Date().toISOString() });
   if (!saveUsersDB(db)) {
     return showAuthError('⚠️ تعذّر إنشاء الحساب في هذا المتصفح.');
   }
@@ -1508,6 +1569,7 @@ function logout() {
   currentUser = null;
   currentWorksheetId = null;
   currentListId = null;
+  appScreen = null;
   authMode = 'login';
   showAuthScreen();
 }
@@ -1516,17 +1578,33 @@ function showApp() {
   document.getElementById('authScreen').style.display = 'none';
   document.getElementById('appHeaderWrap').style.display = '';
   document.getElementById('app').style.display = '';
-  const avatar = document.getElementById('avatarCircle');
-  if (avatar) {
-    avatar.textContent = (currentUser || '?').trim().charAt(0).toUpperCase();
-    avatar.title = currentUser || '';
-  }
+  updateAvatarUI();
   const drawerUsername = document.getElementById('drawerUsername');
   if (drawerUsername) drawerUsername.textContent = currentUser || '—';
+  const adminItem = document.getElementById('adminDrawerItem');
+  if (adminItem) {
+    const rec = findUserRecord(currentUser);
+    adminItem.style.display = (rec && rec.isAdmin) ? 'flex' : 'none';
+  }
   const info = document.getElementById('lastSavedInfo');
   if (info) info.textContent = data.lastSaved ? ('آخر حفظ: ' + formatDateTime(data.lastSaved)) : 'لم يتم الحفظ بعد';
   updateRestoreLegacyVisibility();
   render();
+}
+
+// Refreshes the small avatar circle in the header to reflect the current user's
+// uploaded profile picture (if any), falling back to their initial letter.
+function updateAvatarUI() {
+  const avatar = document.getElementById('avatarCircle');
+  if (!avatar) return;
+  avatar.title = currentUser || '';
+  const rec = findUserRecord(currentUser);
+  if (rec && rec.avatar) {
+    avatar.innerHTML = `<img src="${rec.avatar}" alt="">`;
+  } else {
+    avatar.innerHTML = '';
+    avatar.textContent = (currentUser || '?').trim().charAt(0).toUpperCase();
+  }
 }
 
 function showAuthScreen() {
@@ -1538,6 +1616,7 @@ function showAuthScreen() {
 }
 
 function initAuth() {
+  ensureAdminExists();
   const session = loadSession();
   if (session && findUserRecord(session)) {
     currentUser = session;
@@ -1677,6 +1756,8 @@ function statusLabel(s) {
 // ============ Render ============
 function render() {
   const app = document.getElementById('app');
+  if (appScreen === 'settings') { renderSettingsView(app); return; }
+  if (appScreen === 'admin') { renderAdminView(app); return; }
   if (!currentWorksheetId) {
     renderWorksheetsView(app);
   } else if (!currentListId) {
@@ -1685,6 +1766,15 @@ function render() {
     renderDetailView(app);
   }
 }
+
+function openSettingsScreen() { appScreen = 'settings'; render(); }
+function openAdminScreen() {
+  const rec = findUserRecord(currentUser);
+  if (!rec || !rec.isAdmin) { alert('هذه الصفحة مخصّصة لحساب الأدمن فقط.'); return; }
+  appScreen = 'admin';
+  render();
+}
+function closeAppScreen() { appScreen = null; render(); }
 
 function renderDonutRing(percent, color, size) {
   size = size || 88;
@@ -1728,6 +1818,186 @@ function computeGlobalStats() {
 function updateBellDot(show) {
   const dot = document.getElementById('bellDot');
   if (dot) dot.style.display = show ? 'block' : 'none';
+}
+
+// ---- Account settings screen ----
+function renderSettingsView(app) {
+  const rec = findUserRecord(currentUser) || {};
+  const avatarHtml = rec.avatar
+    ? `<img src="${rec.avatar}" class="avatar-lg" style="object-fit:cover">`
+    : `<div class="avatar-lg">${escapeHtml((currentUser || '?').trim().charAt(0).toUpperCase())}</div>`;
+  const joined = rec.createdAt ? formatGregorianFull(rec.createdAt.slice(0, 10)) : '';
+
+  const html = `
+    <button class="btn-secondary back-btn" onclick="closeAppScreen()">→ العودة</button>
+    <div class="page-header">
+      <div class="page-header-icon">⚙️</div>
+      <h1>إعدادات الحساب</h1>
+    </div>
+
+    <div class="card" style="text-align:center">
+      <div class="avatar-edit-wrap">
+        ${avatarHtml}
+        <div class="avatar-edit-btn" onclick="triggerAvatarUpload()" title="تغيير الصورة">📷</div>
+      </div>
+      ${rec.avatar ? `<button class="btn-secondary" style="margin-top:12px" onclick="removeAvatar()">إزالة الصورة</button>` : ''}
+      <h2 style="margin-top:14px">${escapeHtml(currentUser || '')}${rec.isAdmin ? ' <span class="admin-badge">👑 أدمن</span>' : ''}</h2>
+      ${joined ? `<p class="hint">عضو منذ ${joined}</p>` : ''}
+    </div>
+
+    <div class="card">
+      <div class="settings-section-title">🔒 تغيير كلمة المرور</div>
+      <div class="form-group">
+        <label>كلمة المرور الحالية</label>
+        <input type="password" id="curAccountPassword" autocomplete="current-password">
+      </div>
+      <div class="form-group">
+        <label>كلمة المرور الجديدة</label>
+        <input type="password" id="newAccountPassword" autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label>تأكيد كلمة المرور الجديدة</label>
+        <input type="password" id="newAccountPasswordConfirm" autocomplete="new-password">
+      </div>
+      <button class="btn-primary" style="width:100%" onclick="changeAccountPassword()">حفظ كلمة المرور</button>
+    </div>
+
+    <div class="card danger-zone">
+      <div class="settings-section-title" style="color:#b91c1c">⚠️ حذف الحساب</div>
+      <p class="hint">سيُحذف حسابك وكل بياناته (قوائمك وأوراق عملك) نهائيًا من هذا المتصفح. لا يمكن التراجع عن هذا الإجراء.</p>
+      <button class="btn-danger" style="width:100%" onclick="deleteMyAccount()">🗑️ حذف حسابي نهائيًا</button>
+    </div>
+  `;
+  app.innerHTML = html;
+}
+
+function triggerAvatarUpload() { document.getElementById('avatarFileInput').click(); }
+
+function handleAvatarFile(event) {
+  const file = event.target.files[0];
+  event.target.value = '';
+  if (!file) return;
+  if (!file.type.startsWith('image/')) { alert('الرجاء اختيار ملف صورة.'); return; }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      // Downscale + crop to a square so the stored avatar stays small.
+      const size = 200;
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      const scale = Math.max(size / img.width, size / img.height);
+      const w = img.width * scale, h = img.height * scale;
+      ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      const db = loadUsersDB();
+      const u = db.users.find(u => normalizeUsername(u.username) === normalizeUsername(currentUser));
+      if (!u) return;
+      u.avatar = dataUrl;
+      if (!saveUsersDB(db)) { alert('⚠️ تعذّر حفظ الصورة (قد تكون كبيرة الحجم على تخزين المتصفح).'); return; }
+      updateAvatarUI();
+      render();
+    };
+    img.onerror = () => alert('تعذّر قراءة هذه الصورة.');
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeAvatar() {
+  if (!confirm('إزالة صورة البروفايل؟')) return;
+  const db = loadUsersDB();
+  const u = db.users.find(u => normalizeUsername(u.username) === normalizeUsername(currentUser));
+  if (!u) return;
+  u.avatar = null;
+  saveUsersDB(db);
+  updateAvatarUI();
+  render();
+}
+
+async function changeAccountPassword() {
+  const curPass = document.getElementById('curAccountPassword').value || '';
+  const newPass = document.getElementById('newAccountPassword').value || '';
+  const confirmPass = document.getElementById('newAccountPasswordConfirm').value || '';
+  const db = loadUsersDB();
+  const u = db.users.find(u => normalizeUsername(u.username) === normalizeUsername(currentUser));
+  if (!u) return;
+  const curHash = await hashPassword(curPass, u.salt);
+  if (curHash !== u.passwordHash) { alert('كلمة المرور الحالية غير صحيحة.'); return; }
+  if (newPass.length < 4) { alert('كلمة المرور الجديدة يجب أن تكون 4 أحرف على الأقل.'); return; }
+  if (newPass !== confirmPass) { alert('كلمتا المرور الجديدتان غير متطابقتين.'); return; }
+  const salt = randomHex(16);
+  u.salt = salt;
+  u.passwordHash = await hashPassword(newPass, salt);
+  if (!saveUsersDB(db)) { alert('⚠️ تعذّر حفظ كلمة المرور الجديدة.'); return; }
+  alert('تم تحديث كلمة المرور بنجاح ✅');
+  render();
+}
+
+function deleteMyAccount() {
+  const rec = findUserRecord(currentUser);
+  const wasOnlyAdmin = !!(rec && rec.isAdmin) && loadUsersDB().users.filter(u => u.isAdmin).length === 1;
+  const warn = wasOnlyAdmin
+    ? 'أنت الأدمن الوحيد لهذا التطبيق. عند حذف حسابك، سيصبح أقدم مستخدم آخر هو الأدمن الجديد تلقائيًا.\n\n'
+    : '';
+  if (!confirm(warn + 'هل أنت متأكد من حذف حسابك؟ سيتم حذف كل بياناتك (قوائمك وأوراق عملك) نهائيًا ولا يمكن التراجع عن هذا الإجراء.')) return;
+
+  const db = loadUsersDB();
+  db.users = db.users.filter(u => normalizeUsername(u.username) !== normalizeUsername(currentUser));
+  saveUsersDB(db);
+  try { localStorage.removeItem(getUserDataKey(currentUser)); } catch (e) { /* ignore */ }
+  ensureAdminExists();
+
+  clearSession();
+  currentUser = null;
+  currentWorksheetId = null;
+  currentListId = null;
+  appScreen = null;
+  authMode = 'login';
+  showAuthScreen();
+  alert('تم حذف حسابك وكل بياناته.');
+}
+
+// ---- Admin screen (visible only to the account flagged isAdmin) ----
+function renderAdminView(app) {
+  const rec = findUserRecord(currentUser);
+  if (!rec || !rec.isAdmin) { closeAppScreen(); return; }
+  const db = loadUsersDB();
+  const users = db.users.slice().sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+
+  const html = `
+    <button class="btn-secondary back-btn" onclick="closeAppScreen()">→ العودة</button>
+    <div class="page-header">
+      <div class="page-header-icon">👑</div>
+      <h1>لوحة الأدمن</h1>
+    </div>
+
+    <div class="card">
+      <div class="admin-stat-box">
+        <div class="num">${users.length}</div>
+        <div class="hint">إجمالي عدد الحسابات التي تم إنشاؤها على هذا الجهاز</div>
+      </div>
+      <div class="settings-section-title">قائمة المستخدمين</div>
+      ${users.map(u => {
+        const avatarHtml = u.avatar
+          ? `<img src="${u.avatar}" class="avatar-sm" style="object-fit:cover">`
+          : `<div class="avatar-sm">${escapeHtml((u.username || '?').trim().charAt(0).toUpperCase())}</div>`;
+        const joined = u.createdAt ? formatGregorianFull(u.createdAt.slice(0, 10)) : '—';
+        return `
+          <div class="admin-user-row">
+            ${avatarHtml}
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:700">${escapeHtml(u.username)}${u.isAdmin ? ' <span class="admin-badge">👑 أدمن</span>' : ''}${normalizeUsername(u.username) === normalizeUsername(currentUser) ? ' (أنت)' : ''}</div>
+              <div class="hint">انضم في ${joined}</div>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+  app.innerHTML = html;
 }
 
 function renderWorksheetsView(app) {
