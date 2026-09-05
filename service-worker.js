@@ -1,4 +1,4 @@
-const CACHE_NAME = 'todo-lists-cache-v12';
+const CACHE_NAME = 'todo-lists-cache-v13';
 const ASSETS = [
   './',
   './index.html',
@@ -28,19 +28,18 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+// Network-first: always try to fetch the latest version first, and only fall back
+// to the cached copy when offline. This way, whenever the app's files are updated,
+// users see the changes on their very next reload (while online) instead of being
+// stuck on an old cached version. The cache is still kept up to date for offline use.
 self.addEventListener('fetch', (event) => {
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      return (
-        cached ||
-        fetch(event.request)
-          .then((response) => {
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-            return response;
-          })
-          .catch(() => cached)
-      );
-    })
+    fetch(event.request)
+      .then((response) => {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        return response;
+      })
+      .catch(() => caches.match(event.request))
   );
 });
