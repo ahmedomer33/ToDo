@@ -1,0 +1,14 @@
+{
+  "appId": "com.yourname.focustodo",
+  "appName": "Focus Todo",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_icon",
+      "iconColor": "#7C3AED"
+    }
+  }
+}

@@ -347,6 +347,17 @@
   .status-not-started { background: #fee2e2; color: #991b1b; }
   .status-in-progress { background: #fef3c7; color: #92400e; }
   .status-done { background: #d1fae5; color: #065f46; }
+  .reminder-badge {
+    display: inline-block;
+    font-size: 11px;
+    background: var(--primary-tint-1);
+    color: var(--primary-text);
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 700;
+    white-space: nowrap;
+    margin-right: 4px;
+  }
   .status-notes { background: #dbeafe; color: #1e40af; }
   .status-formulas { background: #fef9c3; color: #854d0e; }
   .status-habits { background: var(--primary-tint-6); color: var(--primary-accent); }
@@ -935,6 +946,25 @@
     <div class="form-group">
       <label>اختر رمزًا للمهمة</label>
       <div class="icon-picker" id="taskIconPicker"></div>
+    </div>
+    <div class="form-group">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="taskReminderEnabled" onchange="onReminderToggle()" style="width:auto">
+        🔔 تفعيل تذكير بموعد هذه المهمة
+      </label>
+    </div>
+    <div id="taskReminderFields" style="display:none">
+      <div style="display:flex;gap:8px">
+        <div class="form-group" style="flex:1">
+          <label>وقت التذكير</label>
+          <input type="time" id="taskReminderTime">
+        </div>
+        <div class="form-group" style="flex:1">
+          <label>التاريخ (اختياري)</label>
+          <input type="date" id="taskReminderDate">
+        </div>
+      </div>
+      <p class="hint">اترك التاريخ فارغًا ليتكرر التذكير كل يوم في هذا الوقت (مناسب للعادات والعبادات)، أو حدّد تاريخًا لتذكير لمرة واحدة فقط.</p>
     </div>
     <div class="modal-actions">
       <button class="btn-danger" id="deleteTaskBtn" onclick="deleteTask()" style="display:none;margin-left:auto">حذف</button>
@@ -1858,6 +1888,9 @@ function showApp() {
   if (whatsNewDot) whatsNewDot.style.display = hasSeenLatestWhatsNew() ? 'none' : 'inline-block';
   render();
   maybeAutoShowWhatsNew();
+  if (IS_NATIVE) {
+    refreshNativePermissionStatus().then(() => { syncNativeReminders(); render(); });
+  }
 }
 
 // Refreshes the small avatar circle in the header to reflect the current user's
@@ -1930,6 +1963,13 @@ function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 const escapeAttr = escapeHtml;
+
+function formatReminderBadge(task) {
+  const r = task.reminder;
+  if (!r || !r.enabled || !r.time) return '';
+  const label = r.date ? `${r.date} ${r.time}` : `يوميًا ${r.time}`;
+  return `<span class="reminder-badge" title="تذكير مفعّل">🔔 ${escapeHtml(label)}</span>`;
+}
 
 function formatMonth(m) {
   const [y, mo] = m.split('-');
@@ -2287,6 +2327,21 @@ function renderWorksheetsView(app) {
     </div>
   `;
 
+  const showNotifBanner = IS_NATIVE ? !nativeNotificationsGranted : ('Notification' in window && Notification.permission === 'default');
+  if (showNotifBanner) {
+    html += `
+      <div class="card" style="background:var(--primary-tint-1);border:1px solid var(--primary-border)">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+          <div>
+            <div style="font-weight:700">🔔 فعّل إشعارات التذكير</div>
+            <div class="hint">اسمح للتطبيق بإرسال إشعارات حتى تصلك تذكيرات المهام والعادات في وقتها.</div>
+          </div>
+          <button class="btn-primary" onclick="requestNotificationPermission()">تفعيل</button>
+        </div>
+      </div>
+    `;
+  }
+
   const stats = computeGlobalStats();
   const hasAlert = stats.notStartedCount > 0;
 
@@ -2608,7 +2663,7 @@ function renderTask(list, task, idx, total) {
       <div class="task-item">
         <div class="task-check ${checked ? 'checked' : ''}" onclick="toggleCheckbox('${task.id}')">${checked ? '✓' : ''}</div>
         <div class="task-content" onclick="openEditTaskModal('${task.id}')">
-          <div class="task-name ${checked ? 'completed' : ''}">${task.icon} ${escapeHtml(task.name)}</div>
+          <div class="task-name ${checked ? 'completed' : ''}">${task.icon} ${escapeHtml(task.name)} ${formatReminderBadge(task)}</div>
         </div>
         ${reorderHtml}
       </div>
@@ -2632,7 +2687,7 @@ function renderTask(list, task, idx, total) {
   return `
     <div class="task-item" style="align-items:flex-start;flex-direction:column;gap:8px">
       <div style="display:flex;width:100%;justify-content:space-between;align-items:flex-start;gap:8px">
-        <div class="task-name" style="cursor:pointer" onclick="openEditTaskModal('${task.id}')">${task.icon} ${escapeHtml(task.name)}</div>
+        <div class="task-name" style="cursor:pointer" onclick="openEditTaskModal('${task.id}')">${task.icon} ${escapeHtml(task.name)} ${formatReminderBadge(task)}</div>
         ${reorderHtml}
       </div>
       <div class="task-value-row">${controlHtml}</div>
@@ -3084,7 +3139,7 @@ function renderHabitTask(list, task, idx, total) {
       <div class="task-item">
         <div class="task-check ${checked ? 'checked' : ''}" onclick="toggleHabitCheckbox('${task.id}')">${checked ? '✓' : ''}</div>
         <div class="task-content" onclick="openEditTaskModal('${task.id}')">
-          <div class="task-name ${checked ? 'completed' : ''}">${task.icon} ${escapeHtml(task.name)}</div>
+          <div class="task-name ${checked ? 'completed' : ''}">${task.icon} ${escapeHtml(task.name)} ${formatReminderBadge(task)}</div>
         </div>
         ${reorderHtml}
       </div>
@@ -3108,7 +3163,7 @@ function renderHabitTask(list, task, idx, total) {
   return `
     <div class="task-item" style="align-items:flex-start;flex-direction:column;gap:8px">
       <div style="display:flex;width:100%;justify-content:space-between;align-items:flex-start;gap:8px">
-        <div class="task-name" style="cursor:pointer" onclick="openEditTaskModal('${task.id}')">${task.icon} ${escapeHtml(task.name)}</div>
+        <div class="task-name" style="cursor:pointer" onclick="openEditTaskModal('${task.id}')">${task.icon} ${escapeHtml(task.name)} ${formatReminderBadge(task)}</div>
         ${reorderHtml}
       </div>
       <div class="task-value-row">${controlHtml}</div>
@@ -3648,6 +3703,10 @@ function openNewTaskModal() {
   document.getElementById('taskInputType').value = 'checkbox';
   document.getElementById('dropdownOptionsGroup').style.display = 'none';
   document.getElementById('deleteTaskBtn').style.display = 'none';
+  document.getElementById('taskReminderEnabled').checked = false;
+  document.getElementById('taskReminderTime').value = '';
+  document.getElementById('taskReminderDate').value = '';
+  document.getElementById('taskReminderFields').style.display = 'none';
   renderIconPicker('taskIconPicker', ICONS, selectedTaskIcon, (icon) => { selectedTaskIcon = icon; });
   renderOptionsTags();
   openModal('taskModal');
@@ -3666,9 +3725,19 @@ function openEditTaskModal(taskId) {
   document.getElementById('taskInputType').value = selectedTaskInputType;
   document.getElementById('dropdownOptionsGroup').style.display = selectedTaskInputType === 'dropdown' ? 'block' : 'none';
   document.getElementById('deleteTaskBtn').style.display = 'inline-block';
+  const reminder = task.reminder || {};
+  document.getElementById('taskReminderEnabled').checked = !!reminder.enabled;
+  document.getElementById('taskReminderTime').value = reminder.time || '';
+  document.getElementById('taskReminderDate').value = reminder.date || '';
+  document.getElementById('taskReminderFields').style.display = reminder.enabled ? 'block' : 'none';
   renderIconPicker('taskIconPicker', ICONS, selectedTaskIcon, (icon) => { selectedTaskIcon = icon; });
   renderOptionsTags();
   openModal('taskModal');
+}
+
+function onReminderToggle() {
+  const enabled = document.getElementById('taskReminderEnabled').checked;
+  document.getElementById('taskReminderFields').style.display = enabled ? 'block' : 'none';
 }
 
 function onTaskInputTypeChange() {
@@ -3705,6 +3774,14 @@ function saveTask() {
     alert('أضف خيارين على الأقل للقائمة المنسدلة');
     return;
   }
+  const reminderEnabled = document.getElementById('taskReminderEnabled').checked;
+  const reminderTime = document.getElementById('taskReminderTime').value;
+  const reminderDate = document.getElementById('taskReminderDate').value;
+  if (reminderEnabled && !reminderTime) {
+    alert('حدّد وقت التذكير');
+    return;
+  }
+  const reminder = { enabled: reminderEnabled, time: reminderEnabled ? reminderTime : '', date: reminderEnabled ? (reminderDate || '') : '' };
   const list = data.lists.find(l => l.id === currentListId);
   const isHabit = list.type === 'habits';
   if (isHabit && !list.habitTasks) list.habitTasks = [];
@@ -3715,8 +3792,10 @@ function saveTask() {
     task.icon = selectedTaskIcon;
     task.inputType = inputType;
     task.options = inputType === 'dropdown' ? taskDropdownOptions.slice() : undefined;
+    task.reminder = reminder;
+    clearFiredRemindersFor(task.id);
   } else {
-    const newTask = { id: uid(), name, icon: selectedTaskIcon, inputType, options: inputType === 'dropdown' ? taskDropdownOptions.slice() : undefined };
+    const newTask = { id: uid(), name, icon: selectedTaskIcon, inputType, options: inputType === 'dropdown' ? taskDropdownOptions.slice() : undefined, reminder };
     taskArr.push(newTask);
     if (isHabit) {
       if (!list.habitDays) list.habitDays = {};
@@ -3734,6 +3813,7 @@ function saveTask() {
   save();
   closeModal('taskModal');
   render();
+  syncNativeReminders();
 }
 
 function deleteTask() {
@@ -3747,6 +3827,7 @@ function deleteTask() {
     list.tasks = list.tasks.filter(t => t.id !== editingTaskId);
     Object.keys(list.months).forEach(m => { delete list.months[m].records[editingTaskId]; });
   }
+  clearFiredRemindersFor(editingTaskId);
   save();
   closeModal('taskModal');
   render();
@@ -4151,6 +4232,160 @@ function importBackup(event) {
   reader.readAsText(file);
   event.target.value = '';
 }
+
+// ============ Reminders / Notifications ============
+// Detect whether we're running inside a Capacitor native shell (Android/iOS APK)
+// vs. a regular browser/PWA. When native, we use the LocalNotifications plugin
+// (real OS-level alarms that fire even if the app is fully closed) instead of
+// the web Notification API (which only fires reliably while the app is open).
+const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+const LN = IS_NATIVE && window.Capacitor.Plugins ? window.Capacitor.Plugins.LocalNotifications : null;
+let nativeNotificationsGranted = false;
+
+// Tracks which reminders already fired today (in-memory only) so the periodic
+// web-based check doesn't re-notify for the same task within the same day/minute.
+// (Not used on native — the OS itself guarantees a native alarm fires exactly once.)
+const firedReminders = new Set();
+
+function clearFiredRemindersFor(taskId) {
+  Array.from(firedReminders).forEach(key => {
+    if (key.indexOf(taskId + '::') === 0) firedReminders.delete(key);
+  });
+  if (IS_NATIVE && LN) {
+    LN.cancel({ notifications: [{ id: taskIdToNumericId(taskId) }] }).catch(() => { /* ignore */ });
+  }
+}
+
+// Capacitor notification IDs must be integers; derive a stable one from the task's uid().
+function taskIdToNumericId(taskId) {
+  let hash = 0;
+  for (let i = 0; i < taskId.length; i++) {
+    hash = (hash * 31 + taskId.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash) % 2147483647;
+}
+
+function collectAllTasksWithReminders() {
+  const results = [];
+  (data.worksheets || []).forEach(ws => {
+    (ws.lists || []).forEach(list => {
+      if (list.type === 'todo') {
+        (list.tasks || []).forEach(t => { if (t.reminder && t.reminder.enabled && t.reminder.time) results.push({ task: t, list }); });
+      } else if (list.type === 'habits') {
+        (list.habitTasks || []).forEach(t => { if (t.reminder && t.reminder.enabled && t.reminder.time) results.push({ task: t, list }); });
+      }
+    });
+  });
+  return results;
+}
+
+// ---- Web fallback (browser / plain PWA): poll every 20s while the app is open ----
+function checkReminders() {
+  if (IS_NATIVE) return; // native reminders are scheduled once via syncNativeReminders() instead
+  if (!currentUser) return;
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const now = new Date();
+  const nowTime = `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
+  const todayStr = dateToDateStr(now);
+  collectAllTasksWithReminders().forEach(({ task, list }) => {
+    const r = task.reminder;
+    if (r.date && r.date !== todayStr) return; // one-time reminder scheduled for a different day
+    if (r.time !== nowTime) return;
+    const key = `${task.id}::${todayStr}`;
+    if (firedReminders.has(key)) return;
+    firedReminders.add(key);
+    fireReminderNotification(list, task);
+  });
+}
+
+function fireReminderNotification(list, task) {
+  const title = `🔔 ${list.name}`;
+  const body = `${task.icon || ''} ${task.name}`.trim();
+  const options = { body, tag: task.id, icon: './icon-192.png', badge: './icon-192.png' };
+  if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+    navigator.serviceWorker.ready
+      .then(reg => reg.showNotification(title, options))
+      .catch(() => { try { new Notification(title, options); } catch (e) { /* ignore */ } });
+  } else {
+    try { new Notification(title, options); } catch (e) { /* ignore */ }
+  }
+}
+
+// ---- Native (Capacitor APK): schedule real OS-level alarms ----
+// These survive the app being fully closed/killed, unlike the web fallback above.
+async function refreshNativePermissionStatus() {
+  if (!IS_NATIVE || !LN) return;
+  try {
+    const status = await LN.checkPermissions();
+    nativeNotificationsGranted = status.display === 'granted';
+  } catch (e) {
+    nativeNotificationsGranted = false;
+  }
+}
+
+// Re-syncs ALL scheduled native alarms with the current data: cancels everything
+// pending, then re-schedules one alarm per enabled reminder. Call this after any
+// change to a task's reminder, and once when the app starts.
+async function syncNativeReminders() {
+  if (!IS_NATIVE || !LN || !nativeNotificationsGranted) return;
+  try {
+    const pending = await LN.getPending();
+    if (pending.notifications && pending.notifications.length) {
+      await LN.cancel({ notifications: pending.notifications.map(n => ({ id: n.id })) });
+    }
+  } catch (e) { /* ignore */ }
+
+  const toSchedule = [];
+  collectAllTasksWithReminders().forEach(({ task, list }) => {
+    const r = task.reminder;
+    const id = taskIdToNumericId(task.id);
+    const title = `🔔 ${list.name}`;
+    const body = `${task.icon || ''} ${task.name}`.trim();
+    if (r.date) {
+      // One-time reminder at an exact date + time.
+      const when = new Date(`${r.date}T${r.time}:00`);
+      if (when.getTime() > Date.now()) {
+        toSchedule.push({ id, title, body, schedule: { at: when } });
+      }
+    } else {
+      // No date set → repeats every day at this time.
+      const [hour, minute] = r.time.split(':').map(Number);
+      toSchedule.push({ id, title, body, schedule: { on: { hour, minute }, allowWhileIdle: true } });
+    }
+  });
+
+  if (toSchedule.length) {
+    try { await LN.schedule({ notifications: toSchedule }); } catch (e) { console.error('LocalNotifications.schedule failed', e); }
+  }
+}
+
+async function requestNotificationPermission() {
+  if (IS_NATIVE && LN) {
+    try {
+      const res = await LN.requestPermissions();
+      nativeNotificationsGranted = res.display === 'granted';
+    } catch (e) {
+      nativeNotificationsGranted = false;
+    }
+    if (nativeNotificationsGranted) {
+      alert('تم تفعيل الإشعارات ✅ ستصلك تذكيرات المهام والعادات حتى لو كان التطبيق مغلقًا.');
+      await syncNativeReminders();
+    } else {
+      alert('لم يتم تفعيل الإشعارات. يمكنك تفعيلها لاحقًا من إعدادات الهاتف الخاصة بالتطبيق.');
+    }
+    render();
+    return;
+  }
+  if (!('Notification' in window)) { alert('هذا المتصفح/الجهاز لا يدعم الإشعارات.'); return; }
+  Notification.requestPermission().then(perm => {
+    if (perm === 'granted') alert('تم تفعيل الإشعارات ✅ ستصلك تذكيرات المهام والعادات في مواعيدها طالما التطبيق مفتوحًا.');
+    else alert('لم يتم تفعيل الإشعارات. يمكنك تفعيلها لاحقًا من إعدادات المتصفح/الجهاز.');
+    render();
+  });
+}
+
+setInterval(checkReminders, 20000);
+
 
 // ============ Init ============
 initApp();
