@@ -375,6 +375,32 @@
   .reorder-btn:hover:not(:disabled) { background: #d1d5db; transform: none; }
   .reorder-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
+  /* Accumulate quick-entry table */
+  .accum-table-wrap { background: var(--primary-tint-5); border-radius: 10px; padding: 10px; overflow-x: auto; }
+  .accum-table { border-collapse: collapse; width: 100%; }
+  .accum-table th, .accum-table td { padding: 6px; border: 1px solid #e5e7eb; text-align: center; font-size: 13.5px; }
+  .accum-table thead th { background: var(--primary-tint-1); color: var(--primary-text); font-weight: 700; }
+  .accum-table tfoot td { background: var(--primary-tint-3); }
+  .accum-name-input, .accum-value-input {
+    width: 100%;
+    min-width: 90px;
+    padding: 6px 8px;
+    font-size: 13.5px;
+    border-radius: 6px;
+    border: 1px solid var(--primary-border);
+    text-align: center;
+  }
+  .accum-value-input { min-width: 80px; }
+  .accum-total-cell { font-weight: 800; color: var(--primary); white-space: nowrap; }
+  .accum-del-btn {
+    background: none;
+    color: #ef4444;
+    font-size: 15px;
+    padding: 2px 8px;
+    line-height: 1;
+  }
+  .accum-del-btn:hover { background: #fee2e2; border-radius: 6px; }
+
   /* Tasks */
   .task-item {
     display: flex;
@@ -1338,6 +1364,7 @@
           </ul>
           <p>النوع لا يمكن تغييره بعد إنشاء الخانة، لكن الاسم يمكن تعديله دائمًا.</p>
           <p><strong>اسم الإدخال:</strong> عند إضافة أو تعديل أي إدخال، يمكنك كتابة اسم اختياري له (مثل "راتب شهر يناير" أو "فاتورة الكهرباء") يظهر بجانب الرقم المُدخل وبجانب نتيجة كل خانة، لتمييز الإدخالات عن بعضها بسهولة.</p>
+          <p><strong>إدخال سريع للخانات التراكمية:</strong> إذا كانت كل خانات القائمة من النوع التراكمي (بدون أي معادلة x)، تتحول شاشة الإدخالات إلى جدول مباشر: اكتب الرقم واضغط Enter ليُحفظ فورًا ويفتح صفًا جديدًا فارغًا وينتقل إليه التركيز تلقائيًا — أسرع لتسجيل أرقام متتالية (كمصروفات يومية مثلًا) دون فتح نافذة منفصلة لكل رقم، مع ظهور الإجمالي المحدَّث أسفل الجدول باستمرار.</p>
 
           <h4>د) تتبع العادات والعبادات</h4>
           <p>الأكثر تفصيلًا بين الأنواع. مخصص لمتابعة عادات/عبادات يومية.</p>
@@ -1566,9 +1593,18 @@ function markOnboardingSeen() {
 // A lightweight, on-device "what's new" log. WHATSNEW_SEEN_KEY remembers the
 // highest version the person has already seen, so the modal only pops up
 // automatically once per update — they can always reopen it from the drawer.
-const APP_RELEASE_VERSION = 18;
+const APP_RELEASE_VERSION = 19;
 const WHATSNEW_SEEN_KEY = 'todoAppWhatsNewSeenVersion';
 const CHANGELOG = [
+  {
+    version: 19,
+    title: 'إدخال أسرع للخانات التراكمية',
+    items: [
+      'في قوائم المعادلات التي تحتوي خانات تراكمية فقط (بدون معادلات x)، تغيّرت شاشة الإدخالات إلى جدول سريع بدل النافذة المنبثقة',
+      'اكتب الرقم واضغط Enter ليُحفظ الصف فورًا ويُفتح صف جديد فارغ وينتقل التركيز إليه مباشرة — مناسب لتسجيل أرقام متتالية بسرعة',
+      'الإجمالي التراكمي يظهر ويتحدّث تلقائيًا أسفل الجدول مع كل صف'
+    ]
+  },
   {
     version: 18,
     title: 'دليل الاستخدام + تحديثات على قوائم المعادلات',
@@ -3279,9 +3315,19 @@ function computeAccumulateSeries(list) {
   return seriesByField;
 }
 
+// A list is "pure accumulate" when every one of its fields is the
+// accumulate type (no x-formula fields mixed in) — in that case we swap the
+// per-entry modal for a fast spreadsheet-like table, since there's no
+// per-entry formula result that needs its own screen.
+function isPureAccumulateList(list) {
+  const fields = list.fields || [];
+  return fields.length > 0 && fields.every(f => f.type === 'accumulate');
+}
+
 function renderFormulasView(list) {
   const fields = list.fields || [];
   const entries = list.entries || [];
+  const pureAccumulate = isPureAccumulateList(list);
   const accSeries = computeAccumulateSeries(list);
   return `
     <div class="card">
@@ -3297,6 +3343,7 @@ function renderFormulasView(list) {
       ` : fields.map((f, idx) => renderField(f, idx, fields.length)).join('')}
     </div>
 
+    ${pureAccumulate ? renderAccumulateTable(list) : `
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px">
         <h2 style="margin:0">🧾 الإدخالات (${entries.length})</h2>
@@ -3308,6 +3355,60 @@ function renderFormulasView(list) {
           <p>لا توجد إدخالات بعد.</p>
         </div>
       ` : entries.slice().reverse().map((e, idx) => renderEntry(e, idx, entries.length, fields, accSeries, entries.length - 1 - idx)).join('')}
+    </div>
+    `}
+  `;
+}
+
+// Fast inline entry table for pure-accumulate lists: type a value, press
+// Enter to commit it and jump straight to a new row — no modal per entry.
+function renderAccumulateTable(list) {
+  const fields = (list.fields || []).filter(f => f.type === 'accumulate');
+  const entries = list.entries || [];
+  const series = computeAccumulateSeries(list);
+  const rows = entries.map((e, idx) => `
+    <tr>
+      <td><input type="text" class="accum-name-input" id="accumName-${e.id}" value="${escapeAttr(e.name || '')}" placeholder="اسم (اختياري)" oninput="updateAccumulateEntryName('${e.id}', this.value)"></td>
+      <td><input type="number" class="accum-value-input" id="accumValue-${e.id}" step="any" value="${escapeAttr(String(e.inputValue))}" oninput="updateAccumulateEntryValue('${e.id}', this.value)" onkeydown="handleAccumulateKeydown(event, '${e.id}')"></td>
+      ${fields.map(f => `<td class="accum-total-cell" id="accumCell-${e.id}-${f.id}">${(series[f.id] && series[f.id][idx] !== undefined) ? escapeHtml(String(series[f.id][idx])) : '—'}</td>`).join('')}
+      <td><button class="accum-del-btn" onclick="deleteAccumulateEntry('${e.id}')" title="حذف الصف">✕</button></td>
+    </tr>
+  `).join('');
+  const footerCells = fields.map(f => {
+    const arr = series[f.id] || [];
+    const val = arr.length ? arr[arr.length - 1] : ((f.startValue !== undefined && f.startValue !== null && f.startValue !== '') ? f.startValue : (f.operation === 'multiply' ? 1 : 0));
+    return `<td class="accum-total-cell" id="accumFooter-${f.id}">${escapeHtml(String(val))}</td>`;
+  }).join('');
+  return `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px">
+        <h2 style="margin:0">🧾 الإدخالات (${entries.length})</h2>
+      </div>
+      <div class="accum-table-wrap">
+        <table class="accum-table">
+          <thead>
+            <tr>
+              <th>الاسم</th>
+              <th>القيمة</th>
+              ${fields.map(f => `<th>🔁 ${escapeHtml(f.name)}</th>`).join('')}
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="accumTableBody">
+            ${rows || `<tr><td colspan="${fields.length + 3}" style="color:#9CA3AF;padding:16px">لا توجد إدخالات بعد. اضغط "+ إضافة صف" لبدء التسجيل.</td></tr>`}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td style="font-weight:800">الإجمالي</td>
+              <td></td>
+              ${footerCells}
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <button class="btn-primary" style="margin-top:12px;width:100%" onclick="addAccumulateRow()">+ إضافة صف</button>
+      <p class="hint" style="margin-top:8px">اكتب الرقم واضغط Enter لإضافة صف جديد والانتقال إليه مباشرة — أسرع لتسجيل إدخالات متتالية.</p>
     </div>
   `;
 }
@@ -4354,6 +4455,93 @@ function moveEntry(displayIndex, direction) {
   reversed[displayIndex] = reversed[newIndex];
   reversed[newIndex] = tmp;
   list.entries = reversed.reverse();
+  save();
+  render();
+}
+
+// ---- Accumulate quick-entry table ----
+// Only the read-only total cells get patched here (no inputs are touched),
+// so this is safe to call on every keystroke without losing focus/cursor.
+function refreshAccumulateTotals(list) {
+  const fields = (list.fields || []).filter(f => f.type === 'accumulate');
+  const entries = list.entries || [];
+  const series = computeAccumulateSeries(list);
+  entries.forEach((e, idx) => {
+    fields.forEach(f => {
+      const cell = document.getElementById('accumCell-' + e.id + '-' + f.id);
+      if (cell) cell.textContent = (series[f.id] && series[f.id][idx] !== undefined) ? series[f.id][idx] : '—';
+    });
+  });
+  fields.forEach(f => {
+    const footer = document.getElementById('accumFooter-' + f.id);
+    if (!footer) return;
+    const arr = series[f.id] || [];
+    const val = arr.length ? arr[arr.length - 1] : ((f.startValue !== undefined && f.startValue !== null && f.startValue !== '') ? f.startValue : (f.operation === 'multiply' ? 1 : 0));
+    footer.textContent = val;
+  });
+}
+
+function updateAccumulateEntryValue(entryId, rawValue) {
+  const list = data.lists.find(l => l.id === currentListId);
+  const entry = (list.entries || []).find(e => e.id === entryId);
+  if (!entry) return;
+  const num = Number(rawValue);
+  entry.inputValue = isNaN(num) ? 0 : num;
+  entry.updatedAt = new Date().toISOString();
+  save();
+  refreshAccumulateTotals(list);
+}
+
+function updateAccumulateEntryName(entryId, rawValue) {
+  const list = data.lists.find(l => l.id === currentListId);
+  const entry = (list.entries || []).find(e => e.id === entryId);
+  if (!entry) return;
+  entry.name = rawValue;
+  entry.updatedAt = new Date().toISOString();
+  save();
+}
+
+// Pressing Enter inside the value cell commits it and immediately opens a
+// fresh row focused and ready, so you can log entry after entry without
+// touching the mouse.
+function handleAccumulateKeydown(event, entryId) {
+  if (event.key !== 'Enter') return;
+  event.preventDefault();
+  const list = data.lists.find(l => l.id === currentListId);
+  const entry = (list.entries || []).find(e => e.id === entryId);
+  if (entry) {
+    const num = Number(event.target.value);
+    entry.inputValue = isNaN(num) ? 0 : num;
+    entry.updatedAt = new Date().toISOString();
+  }
+  const newId = uid();
+  if (!list.entries) list.entries = [];
+  list.entries.push({ id: newId, name: '', inputValue: 0, results: [], createdAt: new Date().toISOString(), updatedAt: null });
+  save();
+  render();
+  setTimeout(() => {
+    const el = document.getElementById('accumValue-' + newId);
+    if (el) { el.focus(); el.select(); }
+  }, 0);
+}
+
+function addAccumulateRow() {
+  const list = data.lists.find(l => l.id === currentListId);
+  if (!list.entries) list.entries = [];
+  const newId = uid();
+  list.entries.push({ id: newId, name: '', inputValue: 0, results: [], createdAt: new Date().toISOString(), updatedAt: null });
+  save();
+  render();
+  setTimeout(() => {
+    const el = document.getElementById('accumValue-' + newId);
+    if (el) { el.focus(); el.select(); }
+  }, 0);
+}
+
+function deleteAccumulateEntry(entryId) {
+  if (!confirm('حذف هذا الصف؟')) return;
+  const list = data.lists.find(l => l.id === currentListId);
+  list.entries = (list.entries || []).filter(e => e.id !== entryId);
   save();
   render();
 }
