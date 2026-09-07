@@ -1094,12 +1094,31 @@
       <input type="text" id="fieldName" placeholder="مثال: تحويل كجم إلى رطل">
     </div>
     <div class="form-group">
+      <label>نوع الخانة</label>
+      <select id="fieldType" onchange="onFieldTypeChange()">
+        <option value="formula">🔣 معادلة (بمتغيّر واحد x)</option>
+        <option value="accumulate">🔁 تراكمي (عملية واحدة تتكرر على عدة إدخالات)</option>
+      </select>
+      <p class="hint">معادلة: تحسب نتيجة مستقلة لكل إدخال بدلالة x. تراكمي: يبدأ من قيمة ابتدائية ويطبّق نفس العملية (جمع/طرح/ضرب) على رقم كل إدخال بالترتيب، فيتحدّث الناتج التراكمي مع كل إدخال جديد.</p>
+    </div>
+    <div class="form-group" id="fieldFormulaGroup">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <label style="margin-bottom:0">المعادلة</label>
         <button type="button" class="btn-secondary" style="padding:4px 10px;font-size:13px" onclick="openModal('formulaHelpModal')">❓ كيف أكتبها؟</button>
       </div>
       <input type="text" id="fieldFormula" placeholder="مثال: x * 2.20462">
       <p class="hint">استخدم <b>x</b> ليمثل الرقم الذي سيتم إدخاله لاحقًا. مسموح بـ ‎+ - * / ^ ** ( )‎ ودوال مثل ‎Math.sqrt(x)‎ أو ‎Math.pow(x,2)‎ — اضغط "كيف أكتبها؟" لمزيد من الأمثلة.</p>
+    </div>
+    <div class="form-group" id="fieldAccumulateGroup" style="display:none">
+      <label>العملية</label>
+      <select id="fieldOperation">
+        <option value="add">➕ جمع — يضيف كل رقم جديد إلى المجموع</option>
+        <option value="subtract">➖ طرح — يطرح كل رقم جديد من المجموع</option>
+        <option value="multiply">✖️ ضرب — يضرب المجموع في كل رقم جديد</option>
+      </select>
+      <label style="margin-top:10px">القيمة الابتدائية (اختياري)</label>
+      <input type="number" id="fieldStartValue" step="any" placeholder="افتراضيًا: 0 للجمع/الطرح، 1 للضرب">
+      <p class="hint">مثال: خانة "إجمالي المصروفات" بعملية جمع — كل مرة تضيف إدخالًا برقم جديد، يُضاف تلقائيًا إلى المجموع ويظهر الناتج التراكمي بجانب كل إدخال.</p>
     </div>
     <div class="modal-actions">
       <button class="btn-danger" id="deleteFieldBtn" onclick="deleteField()" style="display:none;margin-left:auto">حذف</button>
@@ -1168,9 +1187,13 @@
       <button class="close-btn" onclick="closeModal('entryModal')">×</button>
     </div>
     <div class="form-group">
+      <label>اسم الإدخال (اختياري)</label>
+      <input type="text" id="entryName" placeholder="مثال: راتب شهر يناير">
+    </div>
+    <div class="form-group">
       <label>الرقم المُدخل</label>
       <input type="number" id="entryInputValue" step="any" placeholder="أدخل الرقم" oninput="updateEntryPreview()">
-      <p class="hint">سيتم تطبيق هذا الرقم على <b>كل المعادلات (الخانات)</b> المدرجة في هذه القائمة دفعة واحدة.</p>
+      <p class="hint">سيتم تطبيق هذا الرقم على <b>كل المعادلات (الخانات)</b> المدرجة في هذه القائمة دفعة واحدة. الخانات التراكمية تُضيفه/تطرحه/تضربه في الناتج المتراكم بحسب ترتيب الإدخالات.</p>
     </div>
     <div class="form-group">
       <label>النتائج</label>
@@ -1307,7 +1330,14 @@
           </ul>
 
           <h4>ج) قائمة المعادلات</h4>
-          <p>لتعريف معادلة حسابية مرة واحدة، ثم إدخال أرقام مختلفة والحصول على النتيجة تلقائيًا لكل إدخال (مفيدة لحسابات متكررة بنفس الصيغة).</p>
+          <p>لتعريف معادلة حسابية مرة واحدة، ثم إدخال أرقام مختلفة والحصول على النتيجة تلقائيًا لكل إدخال (مفيدة لحسابات متكررة بنفس الصيغة). القائمة تتكون من جزأين: 🧩 <strong>خانات</strong> (المعادلات نفسها) و🧾 <strong>إدخالات</strong> (الأرقام التي تُطبَّق عليها).</p>
+          <p><strong>نوعا الخانة عند الإضافة:</strong></p>
+          <ul>
+            <li>🔣 <strong>معادلة (بمتغيّر واحد x):</strong> تكتب صيغة رياضية تستخدم x (مثل <code>x * 2.20462</code>)، وكل إدخال يحسب نتيجة مستقلة بحلول x محل الرقم المدخل.</li>
+            <li>🔁 <strong>تراكمي (عملية واحدة على عدة إدخالات):</strong> بدل كتابة معادلة، تختار عملية واحدة فقط — جمع ➕ أو طرح ➖ أو ضرب ✖️ — وقيمة ابتدائية اختيارية. كل إدخال جديد يُطبَّق تلقائيًا بهذه العملية على الناتج المتراكم من الإدخالات السابقة بحسب ترتيبها (مثال: خانة "إجمالي المصروفات" بعملية جمع تبدأ من 0، وكل إدخال جديد يُضاف للمجموع ويظهر الناتج المحدَّث بجانب كل إدخال).</li>
+          </ul>
+          <p>النوع لا يمكن تغييره بعد إنشاء الخانة، لكن الاسم يمكن تعديله دائمًا.</p>
+          <p><strong>اسم الإدخال:</strong> عند إضافة أو تعديل أي إدخال، يمكنك كتابة اسم اختياري له (مثل "راتب شهر يناير" أو "فاتورة الكهرباء") يظهر بجانب الرقم المُدخل وبجانب نتيجة كل خانة، لتمييز الإدخالات عن بعضها بسهولة.</p>
 
           <h4>د) تتبع العادات والعبادات</h4>
           <p>الأكثر تفصيلًا بين الأنواع. مخصص لمتابعة عادات/عبادات يومية.</p>
@@ -1536,9 +1566,18 @@ function markOnboardingSeen() {
 // A lightweight, on-device "what's new" log. WHATSNEW_SEEN_KEY remembers the
 // highest version the person has already seen, so the modal only pops up
 // automatically once per update — they can always reopen it from the drawer.
-const APP_RELEASE_VERSION = 17;
+const APP_RELEASE_VERSION = 18;
 const WHATSNEW_SEEN_KEY = 'todoAppWhatsNewSeenVersion';
 const CHANGELOG = [
+  {
+    version: 18,
+    title: 'دليل الاستخدام + تحديثات على قوائم المعادلات',
+    items: [
+      'أُضيف "📚 دليل الاستخدام" إلى القائمة الجانبية ☰: شرح كامل لكل خصائص التطبيق داخل التطبيق نفسه، مع خانة بحث تفلتر الأقسام فوريًا',
+      'في قوائم المعادلات: يمكنك الآن إضافة "اسم" اختياري لكل إدخال (مثل "راتب شهر يناير") يظهر بجانب الرقم المُدخل',
+      'في قوائم المعادلات: نوع جديد من الخانات وهو "خانة تراكمية" — بدل معادلة بمتغيّر x، تختار عملية واحدة فقط (جمع / طرح / ضرب) وقيمة ابتدائية، وكل إدخال جديد يُضاف/يُطرح/يُضرب في الناتج المتراكم تلقائيًا (مفيد مثلًا لمتابعة إجمالي مصروفات أو رصيد يتغيّر مع كل إدخال)'
+    ]
+  },
   {
     version: 17,
     title: 'إضافة "ما الجديد؟"',
@@ -3215,9 +3254,35 @@ function evaluateFormula(formula, x) {
   }
 }
 
+// Computes, for every accumulate-type field, the running total after each
+// entry in list.entries (chronological/manual order — same order the array
+// is stored in), so it can be looked up per-entry when rendering.
+function computeAccumulateSeries(list) {
+  const fields = (list.fields || []).filter(f => f.type === 'accumulate');
+  const entries = list.entries || [];
+  const seriesByField = {};
+  fields.forEach(f => {
+    let total = (f.startValue !== undefined && f.startValue !== null && f.startValue !== '')
+      ? Number(f.startValue) : (f.operation === 'multiply' ? 1 : 0);
+    const arr = [];
+    entries.forEach(e => {
+      const x = Number(e.inputValue);
+      if (!isNaN(x)) {
+        if (f.operation === 'add') total += x;
+        else if (f.operation === 'subtract') total -= x;
+        else if (f.operation === 'multiply') total *= x;
+      }
+      arr.push(Math.round(total * 1e6) / 1e6);
+    });
+    seriesByField[f.id] = arr;
+  });
+  return seriesByField;
+}
+
 function renderFormulasView(list) {
   const fields = list.fields || [];
   const entries = list.entries || [];
+  const accSeries = computeAccumulateSeries(list);
   return `
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px">
@@ -3242,17 +3307,27 @@ function renderFormulasView(list) {
           <div class="icon">🧾</div>
           <p>لا توجد إدخالات بعد.</p>
         </div>
-      ` : entries.slice().reverse().map((e, idx) => renderEntry(e, idx, entries.length)).join('')}
+      ` : entries.slice().reverse().map((e, idx) => renderEntry(e, idx, entries.length, fields, accSeries, entries.length - 1 - idx)).join('')}
     </div>
   `;
 }
 
 function renderField(field, idx, total) {
+  const type = field.type || 'formula';
+  let subtitle;
+  if (type === 'accumulate') {
+    const opLabel = field.operation === 'subtract' ? 'طرح (−)' : field.operation === 'multiply' ? 'ضرب (×)' : 'جمع (+)';
+    const startVal = (field.startValue !== undefined && field.startValue !== null && field.startValue !== '')
+      ? field.startValue : (field.operation === 'multiply' ? 1 : 0);
+    subtitle = `🔁 خانة تراكمية · العملية: ${opLabel} · القيمة الابتدائية: ${escapeHtml(String(startVal))}`;
+  } else {
+    subtitle = `x = الرقم المُدخل · النتيجة = ${escapeHtml(field.formula)}`;
+  }
   return `
     <div class="task-item">
       <div class="task-content" style="cursor:pointer" onclick="openEditFieldModal('${field.id}')">
-        <div class="task-name">🔣 ${escapeHtml(field.name)}</div>
-        <div class="hint" style="margin-top:2px">x = الرقم المُدخل · النتيجة = ${escapeHtml(field.formula)}</div>
+        <div class="task-name">${type === 'accumulate' ? '🔁' : '🔣'} ${escapeHtml(field.name)}</div>
+        <div class="hint" style="margin-top:2px">${subtitle}</div>
       </div>
       <div class="reorder-controls">
         <button class="reorder-btn" onclick="moveField(${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>▲</button>
@@ -3262,20 +3337,33 @@ function renderField(field, idx, total) {
   `;
 }
 
-function renderEntry(entry, idx, total) {
+function renderEntry(entry, idx, total, fields, accSeries, originalIndex) {
   const dateLabel = formatNoteDate(entry);
-  const results = entry.results || [];
-  const resultsHtml = results.map(r => `
+  const formulaResults = entry.results || [];
+  const accumulateFields = (fields || []).filter(f => f.type === 'accumulate');
+  const rows = formulaResults.map(r => `
     <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-top:1px solid #eee">
       <span style="font-size:13px;color:#555">${escapeHtml(r.fieldName)} <span class="hint" style="display:inline">(${escapeHtml(r.formula)})</span></span>
       <span style="font-weight:800;color:var(--primary)">${r.result === null ? 'تعذّر الحساب' : escapeHtml(String(r.result))}</span>
     </div>
-  `).join('');
+  `);
+  accumulateFields.forEach(f => {
+    const series = accSeries && accSeries[f.id];
+    const val = series ? series[originalIndex] : null;
+    rows.push(`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-top:1px solid #eee">
+        <span style="font-size:13px;color:#555">🔁 ${escapeHtml(f.name)} <span class="hint" style="display:inline">(تراكمي)</span></span>
+        <span style="font-weight:800;color:var(--primary)">${(val === null || val === undefined) ? '—' : escapeHtml(String(val))}</span>
+      </div>
+    `);
+  });
+  const resultsHtml = rows.join('');
+  const nameLabel = entry.name ? `<span style="font-weight:700">${escapeHtml(entry.name)}:</span> ` : '';
   return `
     <div class="note-item" style="display:flex;align-items:flex-start;gap:12px">
       <div style="flex:1;cursor:pointer" onclick="openEditEntryModal('${entry.id}')">
         <div class="note-time">🕒 ${escapeHtml(dateLabel)}</div>
-        <div class="task-name">الرقم المُدخل: ${escapeHtml(String(entry.inputValue))}</div>
+        <div class="task-name">${nameLabel}الرقم المُدخل: ${escapeHtml(String(entry.inputValue))}</div>
         ${resultsHtml}
       </div>
       <div class="reorder-controls">
@@ -4271,12 +4359,22 @@ function moveEntry(displayIndex, direction) {
 }
 
 // ---- Field modal (formulas lists) ----
+function onFieldTypeChange() {
+  const type = document.getElementById('fieldType').value;
+  document.getElementById('fieldFormulaGroup').style.display = type === 'accumulate' ? 'none' : '';
+  document.getElementById('fieldAccumulateGroup').style.display = type === 'accumulate' ? '' : 'none';
+}
+
 function openNewFieldModal() {
   editingFieldId = null;
   document.getElementById('fieldModalTitle').textContent = 'إضافة خانة';
   document.getElementById('fieldName').value = '';
+  document.getElementById('fieldType').value = 'formula';
   document.getElementById('fieldFormula').value = '';
+  document.getElementById('fieldOperation').value = 'add';
+  document.getElementById('fieldStartValue').value = '';
   document.getElementById('deleteFieldBtn').style.display = 'none';
+  onFieldTypeChange();
   openModal('fieldModal');
 }
 
@@ -4285,30 +4383,48 @@ function openEditFieldModal(fieldId) {
   const field = (list.fields || []).find(f => f.id === fieldId);
   if (!field) return;
   editingFieldId = fieldId;
+  const type = field.type || 'formula';
   document.getElementById('fieldModalTitle').textContent = 'تعديل الخانة';
   document.getElementById('fieldName').value = field.name;
-  document.getElementById('fieldFormula').value = field.formula;
+  document.getElementById('fieldType').value = type;
+  document.getElementById('fieldFormula').value = field.formula || '';
+  document.getElementById('fieldOperation').value = field.operation || 'add';
+  document.getElementById('fieldStartValue').value = (field.startValue !== undefined && field.startValue !== null) ? field.startValue : '';
   document.getElementById('deleteFieldBtn').style.display = 'inline-block';
+  onFieldTypeChange();
   openModal('fieldModal');
 }
 
 function saveField() {
   const name = document.getElementById('fieldName').value.trim();
-  const formula = document.getElementById('fieldFormula').value.trim();
+  const type = document.getElementById('fieldType').value;
   if (!name) { alert('أدخل اسم الخانة'); return; }
-  if (!formula) { alert('أدخل المعادلة'); return; }
-  if (evaluateFormula(formula, 1) === null) {
-    alert('المعادلة غير صالحة. تأكد من كتابتها بشكل صحيح باستخدام x.');
-    return;
-  }
   const list = data.lists.find(l => l.id === currentListId);
   if (!list.fields) list.fields = [];
+
+  let fieldData;
+  if (type === 'accumulate') {
+    const operation = document.getElementById('fieldOperation').value;
+    const startRaw = document.getElementById('fieldStartValue').value;
+    const startValue = startRaw === '' ? (operation === 'multiply' ? 1 : 0) : Number(startRaw);
+    if (isNaN(startValue)) { alert('القيمة الابتدائية غير صالحة'); return; }
+    fieldData = { name, type: 'accumulate', operation, startValue };
+  } else {
+    const formula = document.getElementById('fieldFormula').value.trim();
+    if (!formula) { alert('أدخل المعادلة'); return; }
+    if (evaluateFormula(formula, 1) === null) {
+      alert('المعادلة غير صالحة. تأكد من كتابتها بشكل صحيح باستخدام x.');
+      return;
+    }
+    fieldData = { name, type: 'formula', formula };
+  }
+
   if (editingFieldId) {
     const field = list.fields.find(f => f.id === editingFieldId);
-    field.name = name;
-    field.formula = formula;
+    delete field.formula; delete field.operation; delete field.startValue;
+    Object.assign(field, fieldData);
   } else {
-    list.fields.push({ id: uid(), name, formula });
+    list.fields.push({ id: uid(), ...fieldData });
   }
   save();
   closeModal('fieldModal');
@@ -4325,12 +4441,15 @@ function deleteField() {
 }
 
 // ---- Entry modal (formulas lists) ----
-// A single input number is applied to ALL formulas (fields) in the list at once.
+// A single input number is applied to ALL fields in the list at once:
+// formula fields compute an independent result from it, accumulate fields
+// fold it into their running total in entry order.
 function openNewEntryModal() {
   const list = data.lists.find(l => l.id === currentListId);
   if (!list.fields || !list.fields.length) { alert('أضف خانة (معادلة) أولًا'); return; }
   editingEntryId = null;
   document.getElementById('entryModalTitle').textContent = 'إضافة إدخال';
+  document.getElementById('entryName').value = '';
   document.getElementById('entryInputValue').value = '';
   document.getElementById('deleteEntryBtn').style.display = 'none';
   updateEntryPreview();
@@ -4343,6 +4462,7 @@ function openEditEntryModal(entryId) {
   if (!entry) return;
   editingEntryId = entryId;
   document.getElementById('entryModalTitle').textContent = 'تعديل الإدخال';
+  document.getElementById('entryName').value = entry.name || '';
   document.getElementById('entryInputValue').value = entry.inputValue;
   document.getElementById('deleteEntryBtn').style.display = 'inline-block';
   updateEntryPreview();
@@ -4355,11 +4475,15 @@ function updateEntryPreview() {
   const raw = document.getElementById('entryInputValue').value;
   const container = document.getElementById('entryResultsPreview');
   if (raw === '') {
-    container.innerHTML = '<div class="hint">أدخل رقمًا لعرض نتيجة كل المعادلات</div>';
+    container.innerHTML = '<div class="hint">أدخل رقمًا لعرض نتيجة كل الخانات</div>';
     return;
   }
   const x = Number(raw);
-  container.innerHTML = fields.map(f => {
+  const formulaFields = fields.filter(f => (f.type || 'formula') === 'formula');
+  const accumulateFields = fields.filter(f => f.type === 'accumulate');
+  const otherEntries = (list.entries || []).filter(e => e.id !== editingEntryId);
+
+  let rowsHtml = formulaFields.map(f => {
     const result = evaluateFormula(f.formula, x);
     return `
       <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f1f1">
@@ -4368,22 +4492,51 @@ function updateEntryPreview() {
       </div>
     `;
   }).join('');
+
+  rowsHtml += accumulateFields.map(f => {
+    let total = (f.startValue !== undefined && f.startValue !== null && f.startValue !== '')
+      ? Number(f.startValue) : (f.operation === 'multiply' ? 1 : 0);
+    otherEntries.forEach(e => {
+      const v = Number(e.inputValue);
+      if (!isNaN(v)) {
+        if (f.operation === 'add') total += v;
+        else if (f.operation === 'subtract') total -= v;
+        else if (f.operation === 'multiply') total *= v;
+      }
+    });
+    if (!isNaN(x)) {
+      if (f.operation === 'add') total += x;
+      else if (f.operation === 'subtract') total -= x;
+      else if (f.operation === 'multiply') total *= x;
+    }
+    total = Math.round(total * 1e6) / 1e6;
+    return `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f1f1">
+        <span style="font-weight:600">🔁 ${escapeHtml(f.name)} <span class="hint" style="display:inline">(تراكمي بعد هذا الإدخال)</span></span>
+        <span style="font-weight:800;color:var(--primary)">${total}</span>
+      </div>
+    `;
+  }).join('');
+
+  container.innerHTML = rowsHtml || '<div class="hint">لا توجد خانات بعد</div>';
 }
 
 function saveEntry() {
   const list = data.lists.find(l => l.id === currentListId);
   const fields = list.fields || [];
+  const name = document.getElementById('entryName').value.trim();
   const raw = document.getElementById('entryInputValue').value;
   if (!fields.length) { alert('أضف خانة (معادلة) أولًا'); return; }
   if (raw === '') { alert('أدخل الرقم'); return; }
   const inputValue = Number(raw);
-  const results = fields.map(f => ({
+  const formulaFields = fields.filter(f => (f.type || 'formula') === 'formula');
+  const results = formulaFields.map(f => ({
     fieldId: f.id,
     fieldName: f.name,
     formula: f.formula,
     result: evaluateFormula(f.formula, inputValue)
   }));
-  if (results.every(r => r.result === null)) {
+  if (formulaFields.length && results.every(r => r.result === null)) {
     alert('تعذّر حساب أي من المعادلات على هذا الرقم');
     return;
   }
@@ -4391,12 +4544,14 @@ function saveEntry() {
   const nowIso = new Date().toISOString();
   if (editingEntryId) {
     const entry = list.entries.find(e => e.id === editingEntryId);
+    entry.name = name;
     entry.inputValue = inputValue;
     entry.results = results;
     entry.updatedAt = nowIso;
   } else {
     list.entries.push({
       id: uid(),
+      name,
       inputValue,
       results,
       createdAt: nowIso,
