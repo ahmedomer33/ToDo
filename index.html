@@ -788,6 +788,78 @@
   .info-body { line-height: 1.9; font-size: 14.5px; color: #374151; }
   .info-body ul { margin-right: 20px; margin-top: 8px; }
   .info-body p { margin-bottom: 4px; }
+
+  /* User Guide */
+  .modal-wide { max-width: 640px; }
+  .guide-search {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--primary-border);
+    border-radius: 12px;
+    font-size: 14px;
+    background: var(--primary-tint-5);
+    margin-bottom: 14px;
+    outline: none;
+  }
+  .guide-search:focus { border-color: var(--primary); }
+  .guide-section {
+    border: 1px solid var(--primary-border);
+    border-radius: 14px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    background: #fff;
+  }
+  .guide-section summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 13px 16px;
+    font-weight: 700;
+    font-size: 14.5px;
+    color: var(--primary-text);
+    background: var(--primary-tint-3);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    user-select: none;
+  }
+  .guide-section summary::-webkit-details-marker { display: none; }
+  .guide-section summary::before {
+    content: '▸';
+    display: inline-block;
+    transition: transform 0.2s;
+    color: var(--primary);
+    font-size: 12px;
+  }
+  .guide-section[open] summary::before { transform: rotate(90deg); }
+  .guide-section .guide-body {
+    padding: 14px 16px 16px;
+    line-height: 1.9;
+    font-size: 14px;
+    color: #374151;
+  }
+  .guide-body h4 { color: var(--primary-text); font-size: 14px; margin: 12px 0 4px; }
+  .guide-body h4:first-child { margin-top: 0; }
+  .guide-body ul { margin-right: 20px; margin-top: 4px; margin-bottom: 8px; }
+  .guide-body li { margin-bottom: 3px; }
+  .guide-body p { margin-bottom: 8px; }
+  .guide-body table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13.5px; }
+  .guide-body table th, .guide-body table td { border: 1px solid var(--primary-border); padding: 6px 10px; text-align: right; }
+  .guide-body table th { background: var(--primary-tint-1); color: var(--primary-text); }
+  .guide-body .guide-tip {
+    background: var(--primary-tint-4);
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 13.5px;
+    margin-top: 6px;
+  }
+  .guide-body .guide-warn {
+    background: #FFF4E5;
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 13.5px;
+    margin-top: 6px;
+  }
+  .guide-section[hidden] { display: none; }
 </style>
 </head>
 <body>
@@ -821,6 +893,7 @@
   <div class="drawer-item" onclick="closeDrawer(); openSettingsScreen();">⚙️ <span>إعدادات الحساب</span></div>
   <div class="drawer-item" id="adminDrawerItem" style="display:none;background:rgba(251,191,36,0.18)" onclick="closeDrawer(); openAdminScreen();">👑 <span>لوحة الأدمن</span></div>
   <div class="drawer-item" onclick="replayOnboarding();">📖 <span>جولة تعريفية بالتطبيق</span></div>
+  <div class="drawer-item" onclick="closeDrawer(); openUserGuideModal();">📚 <span>دليل الاستخدام</span></div>
   <div class="drawer-item" id="restoreLegacyBtn" style="display:none;background:rgba(249,115,22,0.18)" onclick="closeDrawer(); restoreLegacyData();">🗃️ <span>استعادة بياناتي القديمة (قبل الحسابات)</span></div>
   <div class="drawer-item" onclick="closeDrawer(); exportBackup();">⬇️ <span>تصدير نسخة احتياطية</span></div>
   <div class="drawer-item" onclick="closeDrawer(); triggerImport();">⬆️ <span>استيراد نسخة</span></div>
@@ -1157,6 +1230,177 @@
     <div class="info-body" id="whatsNewBody"></div>
     <div class="modal-actions">
       <button class="btn-primary" onclick="closeModal('whatsNewModal')">تمام</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: User Guide -->
+<div class="modal-overlay" id="userGuideModal">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <div class="modal-title">📚 دليل استخدام Focus Todo</div>
+      <button class="close-btn" onclick="closeModal('userGuideModal')">×</button>
+    </div>
+    <input type="text" class="guide-search" id="guideSearchInput" placeholder="🔎 ابحث في الدليل..." oninput="filterGuide(this.value)">
+    <div id="guideSections">
+
+      <details class="guide-section" open>
+        <summary>🔎 نظرة عامة</summary>
+        <div class="guide-body">
+          <p>Focus Todo تطبيق ويب (PWA) لتنظيم مهامك وملاحظاتك وعاداتك وعباداتك ومعادلاتك الحسابية — يعمل بالكامل من متصفحك بدون خادم، ويعمل حتى بدون اتصال بالإنترنت بعد أول فتح له.</p>
+          <p><strong>هيكل التطبيق:</strong> حسابك ← أوراق العمل ← القوائم ← المهام / الملاحظات / الإدخالات</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>👤 الحساب الشخصي</summary>
+        <div class="guide-body">
+          <h4>إنشاء حساب / تسجيل الدخول</h4>
+          <p>عند فتح التطبيق لأول مرة تظهر شاشة تعريفية سريعة بخصائص التطبيق (يمكن تخطّيها)، ثم شاشة تسجيل الدخول. اختر تبويب "إنشاء حساب" وأدخل اسم مستخدم وكلمة مرور (4 أحرف على الأقل).</p>
+          <p>بيانات الحسابات وكلمات المرور مخزّنة محليًا فقط على هذا الجهاز/المتصفح (كلمة المرور محفوظة كتشفير هاش وليست نصًا صريحًا)، ولا تُرسل لأي خادم خارجي.</p>
+          <h4>إعدادات الحساب</h4>
+          <p>من القائمة الجانبية (☰) اختر "إعدادات الحساب" للوصول إلى:</p>
+          <ul>
+            <li>📷 صورة البروفايل: ارفع صورة (تُقصّ تلقائيًا مربعة) أو أزلها</li>
+            <li>🎨 لون المظهر: يُحفظ مع حسابك ويُطبَّق على أزرار وتفاصيل واجهة التطبيق، اختر من ألوان جاهزة أو حدّد لونًا مخصصًا بالكامل</li>
+            <li>🔑 تغيير كلمة المرور: يتطلب كلمة المرور الحالية</li>
+            <li>⚠️ حذف الحساب: يحذف حسابك وكل بياناته (أوراق عملك وقوائمك) نهائيًا من هذا الجهاز</li>
+          </ul>
+          <h4>لوحة الأدمن</h4>
+          <p>أول حساب يُنشأ على الجهاز يصبح "أدمن" تلقائيًا. يظهر له خيار "لوحة الأدمن" في القائمة الجانبية، ويعرض إجمالي عدد الحسابات التي أُنشئت على هذا الجهاز، وقائمة بكل الحسابات (الاسم، الصورة، تاريخ الانضمام).</p>
+          <div class="guide-tip">💡 بما أن التطبيق بلا خادم مركزي، "الأدمن" و"عدد المستخدمين" يخصّان هذا الجهاز فقط، وليس كل من يستخدم التطبيق في أي مكان.</div>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>🗂️ أوراق العمل (Worksheets)</summary>
+        <div class="guide-body">
+          <p>أول شاشة تراها بعد تسجيل الدخول. ورقة العمل هي "حاوية" تجمع مجموعة قوائم مرتبطة ببعضها (مثلًا: ورقة "عملي" وورقة "شخصي" منفصلتين).</p>
+          <ul>
+            <li>➕ إنشاء ورقة عمل جديدة بالاسم الذي تريده</li>
+            <li>✏️ تعديل / حذف من نفس الشاشة</li>
+            <li>في أعلى الشاشة إحصائيات عامة (نسبة الإنجاز الكلية، عدد المهام المنجزة/الجارية/غير المبدوءة) على شكل حلقات دائرية (Donut charts)</li>
+          </ul>
+          <p>اضغط على أي ورقة عمل للدخول إلى قوائمها.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>📋 القوائم وأنواعها</summary>
+        <div class="guide-body">
+          <p>عند إنشاء قائمة جديدة داخل ورقة عمل، تختار أحد 4 أنواع (النوع لا يمكن تغييره بعد الإنشاء، لكن الاسم والأيقونة يمكن تعديلهما دائمًا).</p>
+
+          <h4>أ) قائمة المهام</h4>
+          <p>مهام شهرية متكررة. لكل مهمة نوع إدخال: ✅ خانة اختيار (تم/لم يتم)، 📝 نص حر، 🔢 رقم، أو 📑 قائمة منسدلة (تحدّد خياراتها بنفسك).</p>
+          <ul>
+            <li>عرض شهري: بطاقات المهام لشهر واحد، مع شريط تقدّم ونسبة الإنجاز</li>
+            <li>عرض جدولي: كل الأشهر في جدول واحد للمقارنة بينها بسرعة</li>
+            <li>إحصائيات لكل شهر (نسبة إنجاز) قابلة للضغط للانتقال لذلك الشهر مباشرة</li>
+          </ul>
+
+          <h4>ب) قائمة الملاحظات</h4>
+          <p>ملاحظات حرة، لكل ملاحظة عنوان اختياري ونوع محتوى:</p>
+          <ul>
+            <li>📝 نص حر (مع "عرض المزيد/أقل" تلقائيًا للنصوص الطويلة)</li>
+            <li>✅ خانة اختيار (ملاحظة قابلة للتحديد كمنجزة)</li>
+            <li>📊 جدول (أعمدة وصفوف تحرّرها بنفسك داخل الملاحظة)</li>
+          </ul>
+
+          <h4>ج) قائمة المعادلات</h4>
+          <p>لتعريف معادلة حسابية مرة واحدة، ثم إدخال أرقام مختلفة والحصول على النتيجة تلقائيًا لكل إدخال (مفيدة لحسابات متكررة بنفس الصيغة).</p>
+
+          <h4>د) تتبع العادات والعبادات</h4>
+          <p>الأكثر تفصيلًا بين الأنواع. مخصص لمتابعة عادات/عبادات يومية.</p>
+          <ul>
+            <li><strong>تعريف المهام اليومية:</strong> نفس أنواع الإدخال المتاحة في قوائم المهام (خانة اختيار / نص / رقم / قائمة منسدلة)، ولكل مهمة إمكانية تفعيل 🔔 تذكير.</li>
+            <li><strong>تحديد فترة التتبع (اختياري):</strong> عند الإنشاء/التعديل يمكن تحديد تاريخ بداية ونهاية للتتبع؛ بعدها لا يمكن تسجيل بيانات ليوم قبل البداية أو بعد النهاية.</li>
+          </ul>
+          <p><strong>3 طرق للعرض:</strong></p>
+          <ul>
+            <li>بطاقات يومية: يوم واحد في كل مرة، مع أزرار "اليوم السابق/التالي"، وحقل انتقال مباشر لأي تاريخ، وعرض التاريخ الميلادي + الهجري + اسم اليوم، مع إمكانية كتابة عنوان مخصص لكل يوم</li>
+            <li>جدول أسبوعي: الأيام السبعة في جدول واحد</li>
+            <li>جدول شهري: كل أيام الشهر في جدول واحد</li>
+          </ul>
+          <p>في كلا الجدولين، العمود الأول (أسماء المهام) والصف الأول (التواريخ) ثابتان أثناء التمرير لسهولة المتابعة.</p>
+          <p><strong>ضبط التقويم الهجري:</strong> بجانب التاريخ الهجري زرّان (−/+) لتقديم أو تأخير التاريخ يومًا واحدًا لمطابقة رؤية الهلال في بلدك.</p>
+          <p><strong>استيراد عناوين الأيام من ملف CSV/Excel:</strong> إذا حددت فترة تتبع كاملة (من/إلى)، يظهر خيار لرفع ملف Excel أو CSV يحتوي عنوانًا في كل صف بالترتيب — يُطبَّق عمود العناوين تلقائيًا على أيام الفترة (يتطلب اتصالًا بالإنترنت أول مرة فقط لتحميل مكتبة قراءة الإكسل).</p>
+          <p><strong>الإحصائيات:</strong> تتغيّر تلقائيًا حسب طريقة العرض الحالية (يومية/أسبوعية/شهرية)، وكل بطاقة قابلة للضغط للانتقال المباشر لتلك الفترة.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>🔔 التذكيرات والإشعارات</summary>
+        <div class="guide-body">
+          <p>عند إضافة/تعديل أي مهمة (في قوائم المهام أو العادات والعبادات)، فعّل "تذكير بموعد هذه المهمة" وحدّد:</p>
+          <ul>
+            <li>الوقت (إجباري)</li>
+            <li>التاريخ (اختياري) — اتركه فارغًا ليتكرر التذكير يوميًا بنفس الوقت (مثالي للعادات)، أو حدّده لتذكير لمرة واحدة</li>
+          </ul>
+          <p>المهام التي عليها تذكير تظهر بجانبها شارة صغيرة بالوقت.</p>
+          <p><strong>لتفعيل الإشعارات:</strong> يظهر بانر أعلى شاشة أوراق العمل لطلب الإذن — اضغط "تفعيل" ووافق على إذن المتصفح/النظام.</p>
+          <div class="guide-warn">⚠️ في نسخة المتصفح/PWA العادية، تعمل التذكيرات فقط أثناء فتح التطبيق (فحص كل 20 ثانية). عند تحويل التطبيق لتطبيق أندرويد حقيقي (APK) عبر Capacitor، تتحول التذكيرات إلى إشعارات حقيقية على مستوى النظام تعمل حتى لو كان التطبيق مغلقًا تمامًا.</div>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>🔎 البحث</summary>
+        <div class="guide-body">
+          <p>شريط البحث أعلى الشاشة يبحث في أسماء أوراق العمل (وأنت داخل شاشة أوراق العمل) أو أسماء القوائم (وأنت داخل ورقة عمل) فوريًا أثناء الكتابة.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>💾 النسخ الاحتياطي والاستيراد</summary>
+        <div class="guide-body">
+          <p>من القائمة الجانبية (☰):</p>
+          <ul>
+            <li>⬇️ تصدير نسخة احتياطية: يحمّل ملف JSON يحتوي كل بياناتك (كل أوراق العمل والقوائم)</li>
+            <li>⬆️ استيراد نسخة: يستبدل بياناتك الحالية بملف تم تصديره سابقًا (يطلب تأكيدًا لأنه إجراء لا يمكن التراجع عنه)</li>
+            <li>ℹ️ كيف تُحفظ بياناتي؟: شرح مبسّط لآلية التخزين المحلي</li>
+          </ul>
+          <div class="guide-tip">💡 يُنصح بأخذ نسخة احتياطية بشكل دوري، خصوصًا قبل مسح بيانات المتصفح أو تغيير الجهاز، لأن البيانات محلية ولا تُزامَن تلقائيًا بين الأجهزة.</div>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>📡 العمل بدون إنترنت (PWA)</summary>
+        <div class="guide-body">
+          <p>بعد أول زيارة، يخزّن التطبيق ملفاته على جهازك ويعمل حتى بدون اتصال. يمكنك أيضًا "تثبيت" التطبيق على شاشتك الرئيسية (من قائمة المتصفح: "إضافة إلى الشاشة الرئيسية" / "App Install") ليعمل بمظهر شبيه بتطبيق حقيقي منفصل عن المتصفح.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>🆕 الجولة التعريفية و"ما الجديد؟"</summary>
+        <div class="guide-body">
+          <ul>
+            <li>📖 جولة تعريفية بالتطبيق (من القائمة الجانبية): تعيد عرض الشرائح التعريفية بخصائص التطبيق في أي وقت</li>
+            <li>🆕 ما الجديد؟: يعرض آخر التحديثات المضافة للتطبيق؛ تظهر نقطة برتقالية صغيرة بجانبه إذا كان هناك تحديث جديد لم تشاهده بعد</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>☰ ملخص أيقونات القائمة الجانبية</summary>
+        <div class="guide-body">
+          <table>
+            <tr><th>الرمز</th><th>الوظيفة</th></tr>
+            <tr><td>🏠</td><td>العودة إلى أوراق العمل</td></tr>
+            <tr><td>⚙️</td><td>إعدادات الحساب</td></tr>
+            <tr><td>👑</td><td>لوحة الأدمن (تظهر فقط لحساب الأدمن)</td></tr>
+            <tr><td>📖</td><td>إعادة عرض الجولة التعريفية</td></tr>
+            <tr><td>📚</td><td>دليل الاستخدام</td></tr>
+            <tr><td>⬇️ / ⬆️</td><td>تصدير / استيراد نسخة احتياطية</td></tr>
+            <tr><td>🆕</td><td>ما الجديد؟</td></tr>
+            <tr><td>ℹ️</td><td>شرح آلية حفظ البيانات</td></tr>
+            <tr><td>🚪</td><td>تسجيل الخروج</td></tr>
+          </table>
+        </div>
+      </details>
+
+      <p id="guideNoResults" style="display:none;text-align:center;color:#9CA3AF;padding:20px 0">لا توجد نتائج مطابقة لبحثك.</p>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-primary" onclick="closeModal('userGuideModal')">تمام</button>
     </div>
   </div>
 </div>
@@ -4175,6 +4419,32 @@ function deleteEntry() {
 
 // ---- Info modal ----
 function showInfoModal() { openModal('infoModal'); }
+
+// ---- User Guide modal ----
+function openUserGuideModal() {
+  const searchInput = document.getElementById('guideSearchInput');
+  if (searchInput) { searchInput.value = ''; filterGuide(''); }
+  document.querySelectorAll('#guideSections .guide-section').forEach((sec, i) => {
+    if (i === 0) sec.setAttribute('open', ''); else sec.removeAttribute('open');
+  });
+  openModal('userGuideModal');
+}
+function filterGuide(query) {
+  const q = (query || '').trim().toLowerCase();
+  const sections = document.querySelectorAll('#guideSections .guide-section');
+  let anyVisible = false;
+  sections.forEach(sec => {
+    const text = sec.textContent.toLowerCase();
+    const match = !q || text.includes(q);
+    sec.hidden = !match;
+    if (match) {
+      anyVisible = true;
+      if (q) sec.setAttribute('open', ''); else if (sec !== sections[0]) sec.removeAttribute('open');
+    }
+  });
+  const noResults = document.getElementById('guideNoResults');
+  if (noResults) noResults.style.display = anyVisible ? 'none' : 'block';
+}
 
 // ---- Icon picker ----
 function renderIconPicker(containerId, icons, selected, onSelect) {
