@@ -401,6 +401,37 @@
   }
   .accum-del-btn:hover { background: #fee2e2; border-radius: 6px; }
 
+  /* Home-screen widgets */
+  .widgets-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+  }
+  .widget-card {
+    background: var(--primary-tint-5);
+    border: 1px solid var(--primary-border);
+    border-radius: 14px;
+    padding: 10px 12px 14px;
+    position: relative;
+  }
+  .widget-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
+  .widget-reorder { display: flex; gap: 4px; }
+  .widget-reorder .reorder-btn { padding: 2px 6px; font-size: 10px; }
+  .widget-unpin {
+    background: none;
+    color: #9CA3AF;
+    font-size: 13px;
+    padding: 2px 6px;
+    line-height: 1;
+    border-radius: 6px;
+  }
+  .widget-unpin:hover { background: #fee2e2; color: #ef4444; }
+  .widget-icon { font-size: 22px; text-align: center; margin-top: 2px; }
+  .widget-name { font-weight: 800; font-size: 14px; color: var(--primary-text); text-align: center; margin-top: 4px; }
+  .widget-worksheet { font-size: 11.5px; color: #9CA3AF; text-align: center; margin-bottom: 6px; }
+  .widget-ring { display: flex; justify-content: center; margin: 4px 0; }
+  .widget-line { font-size: 12.5px; color: #4b5563; text-align: center; line-height: 1.6; }
+
   /* Tasks */
   .task-item {
     display: flex;
@@ -1335,6 +1366,21 @@
       </details>
 
       <details class="guide-section">
+        <summary>📌 الويدجتس (Widgets)</summary>
+        <div class="guide-body">
+          <p>يمكنك تثبيت أي قائمة (من أي نوع ومن أي ورقة عمل) كـ "Widget" يظهر في أعلى شاشة "أوراق العمل" الرئيسية، لمتابعة أهم قوائمك دون الحاجة للدخول إليها كل مرة.</p>
+          <p><strong>كيف تثبّت قائمة:</strong> ادخل ورقة العمل، وبجانب أي قائمة اضغط 📍 لتثبيتها (تتحول إلى 📌 بعد التثبيت). لإلغاء التثبيت اضغط عليها مرة أخرى، أو اضغط ✕ على الويدجت نفسه من الشاشة الرئيسية.</p>
+          <p><strong>ماذا يعرض كل ويدجت:</strong></p>
+          <ul>
+            <li>قوائم المهام والعادات/العبادات: نسبة الإنجاز (الشهر الحالي أو اليوم الحالي) على شكل حلقة دائرية مصغّرة</li>
+            <li>قوائم الملاحظات: عدد الملاحظات، وإن وُجدت ملاحظات قابلة للتحديد كمنجزة، عدد المنجز منها</li>
+            <li>قوائم المعادلات التراكمية بالكامل: الناتج التراكمي الحالي لكل خانة (مثل إجمالي المصروفات)</li>
+          </ul>
+          <p>اضغط على أي ويدجت للانتقال مباشرة لتلك القائمة، واستخدم السهمين (◂ ▸) لإعادة ترتيب الويدجتس كما تريد.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
         <summary>📋 القوائم وأنواعها</summary>
         <div class="guide-body">
           <p>عند إنشاء قائمة جديدة داخل ورقة عمل، تختار أحد 4 أنواع (النوع لا يمكن تغييره بعد الإنشاء، لكن الاسم والأيقونة يمكن تعديلهما دائمًا).</p>
@@ -1540,7 +1586,7 @@ function resetThemeColor() {
 }
 
 // ============ State ============
-let data = { worksheets: [] }; // placeholder; real per-user data is loaded after login (see loadData())
+let data = { worksheets: [], pinnedWidgets: [] }; // placeholder; real per-user data is loaded after login (see loadData())
 let currentWorksheetId = null;
 let searchQuery = '';
 let editingWorksheetId = null;
@@ -1593,9 +1639,18 @@ function markOnboardingSeen() {
 // A lightweight, on-device "what's new" log. WHATSNEW_SEEN_KEY remembers the
 // highest version the person has already seen, so the modal only pops up
 // automatically once per update — they can always reopen it from the drawer.
-const APP_RELEASE_VERSION = 19;
+const APP_RELEASE_VERSION = 20;
 const WHATSNEW_SEEN_KEY = 'todoAppWhatsNewSeenVersion';
 const CHANGELOG = [
+  {
+    version: 20,
+    title: 'ويدجتس في الشاشة الرئيسية',
+    items: [
+      'يمكنك الآن تثبيت أي قائمة كـ "Widget" يظهر في أعلى شاشة أوراق العمل — من داخل ورقة العمل اضغط 📍 بجانب أي قائمة لتثبيتها',
+      'كل ويدجت يعرض ملخصًا مباشرًا حسب نوع القائمة: نسبة إنجاز الشهر/اليوم لقوائم المهام والعادات، عدد/إنجاز الملاحظات، أو الإجمالي التراكمي لقوائم المعادلات التراكمية',
+      'اضغط على أي ويدجت للانتقال مباشرة لتلك القائمة، وله زر ✕ لإلغاء التثبيت وسهمان (◂ ▸) لإعادة ترتيب الويدجتس'
+    ]
+  },
   {
     version: 19,
     title: 'إدخال أسرع للخانات التراكمية',
@@ -1810,7 +1865,7 @@ function adjustHijriOffset(delta) {
 }
 
 // ============ Persistence ============
-const CURRENT_VERSION = 6;
+const CURRENT_VERSION = 7;
 
 function migrateData(parsed) {
   if (!parsed || typeof parsed !== 'object' || (!Array.isArray(parsed.lists) && !Array.isArray(parsed.worksheets))) {
@@ -1898,6 +1953,14 @@ function migrateData(parsed) {
   }
 
   if (!Array.isArray(parsed.worksheets)) parsed.worksheets = [];
+
+  // Migrate v6 -> v7: add the pinned-widgets list for the home-screen dashboard.
+  if (parsed.version < 7) {
+    if (!Array.isArray(parsed.pinnedWidgets)) parsed.pinnedWidgets = [];
+    parsed.version = 7;
+  }
+  if (!Array.isArray(parsed.pinnedWidgets)) parsed.pinnedWidgets = [];
+
   return parsed;
 }
 
@@ -2421,6 +2484,135 @@ function renderDonutRing(percent, color, size) {
   `;
 }
 
+// ============ Home-screen widgets ============
+// A widget is just a pinned list: data.pinnedWidgets stores list IDs (order
+// = display order). Lists live inside worksheets, so we scan every
+// worksheet to resolve a pinned ID to its list + worksheet name, which also
+// means a pinned list keeps working even if you're not currently inside
+// its worksheet.
+function findListLocation(listId) {
+  for (const ws of (data.worksheets || [])) {
+    const list = (ws.lists || []).find(l => l.id === listId);
+    if (list) return { list, worksheet: ws };
+  }
+  return null;
+}
+
+function isListPinned(listId) {
+  return (data.pinnedWidgets || []).includes(listId);
+}
+
+function toggleWidgetPin(listId) {
+  if (!data.pinnedWidgets) data.pinnedWidgets = [];
+  const i = data.pinnedWidgets.indexOf(listId);
+  if (i === -1) data.pinnedWidgets.push(listId);
+  else data.pinnedWidgets.splice(i, 1);
+  save();
+  render();
+}
+
+function moveWidget(index, direction) {
+  const arr = data.pinnedWidgets || [];
+  const newIndex = index + direction;
+  if (newIndex < 0 || newIndex >= arr.length) return;
+  const tmp = arr[index];
+  arr[index] = arr[newIndex];
+  arr[newIndex] = tmp;
+  save();
+  render();
+}
+
+function openPinnedWidget(listId) {
+  const loc = findListLocation(listId);
+  if (!loc) return;
+  currentWorksheetId = loc.worksheet.id;
+  data.lists = loc.worksheet.lists;
+  resetSearch();
+  openList(listId);
+}
+
+function computeWidgetSummary(list) {
+  if (list.type === 'todo') {
+    const percent = getMonthPercent(list, getCurrentMonth());
+    const status = getMonthStatus(list, getCurrentMonth());
+    return { percent, line: `الشهر الحالي · ${statusLabel(status)}` };
+  }
+  if (list.type === 'habits') {
+    const today = getCurrentDateStr();
+    const percent = getHabitDayPercent(list, today);
+    const status = getHabitDayStatus(list, today);
+    return { percent, line: `اليوم · ${statusLabel(status)}` };
+  }
+  if (list.type === 'notes') {
+    const notes = list.notes || [];
+    const checkable = notes.filter(n => n.kind === 'checkbox');
+    if (checkable.length) {
+      const done = checkable.filter(n => n.checked).length;
+      return { percent: Math.round(done / checkable.length * 100), line: `${done} من ${checkable.length} منجزة (${notes.length} ملاحظة)` };
+    }
+    return { percent: null, badge: String(notes.length), line: notes.length === 1 ? 'ملاحظة واحدة' : 'ملاحظة' };
+  }
+  if (list.type === 'formulas') {
+    if (isPureAccumulateList(list)) {
+      const fields = (list.fields || []).filter(f => f.type === 'accumulate');
+      const series = computeAccumulateSeries(list);
+      const lines = fields.map(f => {
+        const arr = series[f.id] || [];
+        const val = arr.length ? arr[arr.length - 1] : ((f.startValue !== undefined && f.startValue !== null && f.startValue !== '') ? f.startValue : (f.operation === 'multiply' ? 1 : 0));
+        return `${f.name}: ${val}`;
+      });
+      return { percent: null, lines: lines.length ? lines : ['لا توجد خانات بعد'] };
+    }
+    const entryCount = (list.entries || []).length;
+    return { percent: null, badge: String(entryCount), line: entryCount === 1 ? 'إدخال واحد' : 'إدخال' };
+  }
+  return { percent: null, line: '' };
+}
+
+function renderWidgetCard(listId, idx, total) {
+  const loc = findListLocation(listId);
+  if (!loc) return '';
+  const { list, worksheet } = loc;
+  const s = computeWidgetSummary(list);
+  const ringHtml = (s.percent !== null && s.percent !== undefined) ? renderDonutRing(s.percent, 'var(--primary)', 60) : '';
+  const bodyHtml = s.lines
+    ? s.lines.map(l => `<div class="widget-line">${escapeHtml(l)}</div>`).join('')
+    : `<div class="widget-line">${s.badge !== undefined ? `<b>${escapeHtml(s.badge)}</b> ` : ''}${escapeHtml(s.line || '')}</div>`;
+  return `
+    <div class="widget-card">
+      <div class="widget-card-top">
+        <div class="widget-reorder">
+          <button class="reorder-btn" onclick="event.stopPropagation(); moveWidget(${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>◂</button>
+          <button class="reorder-btn" onclick="event.stopPropagation(); moveWidget(${idx}, 1)" ${idx === total - 1 ? 'disabled' : ''}>▸</button>
+        </div>
+        <button class="widget-unpin" title="إلغاء تثبيت هذا الويدجت" onclick="event.stopPropagation(); toggleWidgetPin('${list.id}')">✕</button>
+      </div>
+      <div onclick="openPinnedWidget('${list.id}')" style="cursor:pointer">
+        <div class="widget-icon">${list.icon}</div>
+        <div class="widget-name">${escapeHtml(list.name)}</div>
+        <div class="widget-worksheet">${escapeHtml(worksheet.name)}</div>
+        ${ringHtml ? `<div class="widget-ring">${ringHtml}</div>` : ''}
+        ${bodyHtml}
+      </div>
+    </div>
+  `;
+}
+
+function renderWidgetsSection() {
+  const ids = (data.pinnedWidgets || []).filter(id => findListLocation(id));
+  // Silently drop pins pointing at deleted lists so they don't pile up.
+  if (ids.length !== (data.pinnedWidgets || []).length) data.pinnedWidgets = ids;
+  if (!ids.length) return '';
+  return `
+    <div class="card">
+      <h2 style="margin-bottom:14px">📌 الويدجتس</h2>
+      <div class="widgets-grid">
+        ${ids.map((id, idx) => renderWidgetCard(id, idx, ids.length)).join('')}
+      </div>
+    </div>
+  `;
+}
+
 function computeGlobalStats() {
   let totalLists = 0, doneCount = 0, notStartedCount = 0, inProgressCount = 0, sumPercent = 0, trackable = 0;
   (data.worksheets || []).forEach(ws => {
@@ -2664,6 +2856,8 @@ function renderWorksheetsView(app) {
   const stats = computeGlobalStats();
   const hasAlert = stats.notStartedCount > 0;
 
+  html += renderWidgetsSection();
+
   if (stats.trackable > 0) {
     html += `
       <div class="alert-banner" style="${hasAlert ? '' : 'background:linear-gradient(90deg,var(--primary),var(--primary-dark))'}">
@@ -2829,6 +3023,7 @@ function renderListsView(app) {
             </div>
             ${badgeHtml}
           </div>
+          <button class="btn-secondary" style="padding:8px 12px;flex-shrink:0" title="${isListPinned(list.id) ? 'إلغاء التثبيت كـ Widget' : 'تثبيت كـ Widget في الشاشة الرئيسية'}" onclick="event.stopPropagation(); toggleWidgetPin('${list.id}')">${isListPinned(list.id) ? '📌' : '📍'}</button>
           <button class="btn-danger" style="padding:8px 12px;flex-shrink:0" title="حذف القائمة" onclick="event.stopPropagation(); deleteList('${list.id}')">🗑️</button>
         </div>`;
     });
