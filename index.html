@@ -292,11 +292,48 @@
   .auth-switch a:hover { text-decoration: underline; }
 
   /* Onboarding (first-run intro) */
+  /* ===== Splash / intro screen ===== */
+  #splashScreen {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: #F4F5F7;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.45s ease;
+  }
+  #splashScreen.hide { opacity: 0; pointer-events: none; }
+  .splash-content { text-align: center; }
+  .splash-logo-wrap {
+    width: 96px;
+    height: 96px;
+    border-radius: 26px;
+    background: var(--primary-tint-1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 18px;
+  }
+  .splash-logo-wrap img { width: 52px; height: 52px; }
+  .splash-title { font-size: 22px; font-weight: 800; color: var(--primary-text); margin-bottom: 6px; }
+  .splash-tagline { font-size: 13.5px; color: #9CA3AF; margin-bottom: 22px; }
+  .splash-spinner {
+    width: 26px;
+    height: 26px;
+    border: 3px solid var(--primary-border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    margin: 0 auto 18px;
+    animation: splash-spin 0.8s linear infinite;
+  }
+  @keyframes splash-spin { to { transform: rotate(360deg); } }
+  .splash-version { font-size: 12px; color: #B0B5BF; font-weight: 700; letter-spacing: 0.3px; }
+
   #onboardingScreen {
     min-height: 100vh; display: flex; align-items: center; justify-content: center;
     background: linear-gradient(160deg, var(--primary-tint-3) 0%, var(--primary-tint-2) 60%);
-  }
-  .onboarding-card { max-width: 400px; width: 100%; margin: 0 auto; text-align: center; }
+  }  .onboarding-card { max-width: 400px; width: 100%; margin: 0 auto; text-align: center; }
   .onboarding-icon {
     width: 110px; height: 110px; border-radius: 30px; margin: 0 auto 20px;
     background: linear-gradient(135deg, var(--primary), var(--primary-darker));
@@ -979,6 +1016,15 @@
 </style>
 </head>
 <body>
+<div id="splashScreen">
+  <div class="splash-content">
+    <div class="splash-logo-wrap"><img src="logo-icon.png" alt="Focus Todo"></div>
+    <div class="splash-title">Focus Todo</div>
+    <div class="splash-tagline">Deep Work</div>
+    <div class="splash-spinner"></div>
+    <div class="splash-version" id="splashVersion"></div>
+  </div>
+</div>
 <div id="onboardingScreen" style="display:none"></div>
 <div id="authScreen"></div>
 
@@ -1017,6 +1063,7 @@
   <div class="drawer-item" onclick="closeDrawer(); showInfoModal();">ℹ️ <span>كيف تُحفظ بياناتي؟</span></div>
   <div class="drawer-item" onclick="closeDrawer(); logout();">🚪 <span>تسجيل الخروج</span></div>
   <div class="hint" style="color:rgba(255,255,255,0.6);padding:10px" id="lastSavedInfo">لم يتم الحفظ بعد</div>
+  <div class="hint" style="color:rgba(255,255,255,0.4);padding:0 10px 10px" id="drawerVersion"></div>
 </div>
 <input type="file" id="importFileInput" accept="application/json" style="display:none" onchange="importBackup(event)">
 <input type="file" id="avatarFileInput" accept="image/*" style="display:none" onchange="handleAvatarFile(event)">
@@ -2337,6 +2384,8 @@ function showApp() {
   }
   const info = document.getElementById('lastSavedInfo');
   if (info) info.textContent = data.lastSaved ? ('آخر حفظ: ' + formatDateTime(data.lastSaved)) : 'لم يتم الحفظ بعد';
+  const drawerVersion = document.getElementById('drawerVersion');
+  if (drawerVersion) drawerVersion.textContent = 'الإصدار ' + APP_VERSION;
   updateRestoreLegacyVisibility();
   const whatsNewDot = document.getElementById('whatsNewDot');
   if (whatsNewDot) whatsNewDot.style.display = hasSeenLatestWhatsNew() ? 'none' : 'inline-block';
@@ -5348,7 +5397,24 @@ setInterval(checkReminders, 20000);
 
 
 // ============ Init ============
+// Single source of truth for the version shown on the splash screen — keep in
+// sync with the "version" field in package.json when it's bumped.
+const APP_VERSION = '1.01.09';
+
+function hideSplashScreen() {
+  const el = document.getElementById('splashScreen');
+  if (!el) return;
+  el.classList.add('hide');
+  setTimeout(() => { el.style.display = 'none'; }, 450);
+}
+
+const splashVersionEl = document.getElementById('splashVersion');
+if (splashVersionEl) splashVersionEl.textContent = 'الإصدار ' + APP_VERSION;
+
 initApp();
+// Keep the splash visible for a minimum beat so it doesn't just flash, then
+// reveal whatever initApp() rendered underneath (onboarding, login, or app).
+setTimeout(hideSplashScreen, 1200);
 
 // ---- Header: drawer + search ----
 function toggleDrawer() {
