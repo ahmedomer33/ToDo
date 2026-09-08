@@ -1748,11 +1748,21 @@ function markOnboardingSeen() {
 // A lightweight, on-device "what's new" log. WHATSNEW_SEEN_KEY remembers the
 // highest version the person has already seen, so the modal only pops up
 // automatically once per update — they can always reopen it from the drawer.
-const APP_RELEASE_VERSION = 21;
+// Version labels here now match APP_VERSION (defined near the end of this
+// script) instead of a separate internal counter, so both stay in sync.
 const WHATSNEW_SEEN_KEY = 'todoAppWhatsNewSeenVersion';
 const CHANGELOG = [
   {
-    version: 21,
+    version: 'V05.09.26',
+    title: 'تصميم جديد وتنقّل أسهل',
+    items: [
+      'تصميم جديد بألوان هادئة (بدون تدرجات أو بهرجة) لكل شاشات التطبيق',
+      'الشريط السفلي بقى ثابت ويظهر في كل الصفحات (الرئيسية، ورقة العمل، القائمة، الإعدادات) مع تبويب جديد للإعدادات — عشان التنقل بين الأقسام يبقى بضغطة واحدة من أي مكان',
+      'أُضيفت شاشة انترو (Splash) بشعار التطبيق ورقم الإصدار عند فتح التطبيق'
+    ]
+  },
+  {
+    version: 'v21',
     title: 'شريط تبويبات سفلي للشاشة الرئيسية',
     items: [
       'قُسّمت الشاشة الرئيسية (أوراق العمل) إلى 3 تبويبات عبر شريط سفلي: 🗂️ الرئيسية (أوراق العمل)، 📌 الويدجتس، 📊 الإحصائيات — بدل عرضها كلها فوق بعض',
@@ -1760,7 +1770,7 @@ const CHANGELOG = [
     ]
   },
   {
-    version: 20,
+    version: 'v20',
     title: 'ويدجتس في الشاشة الرئيسية',
     items: [
       'يمكنك الآن تثبيت أي قائمة كـ "Widget" يظهر في أعلى شاشة أوراق العمل — من داخل ورقة العمل اضغط 📍 بجانب أي قائمة لتثبيتها',
@@ -1769,7 +1779,7 @@ const CHANGELOG = [
     ]
   },
   {
-    version: 19,
+    version: 'v19',
     title: 'إدخال أسرع للخانات التراكمية',
     items: [
       'في قوائم المعادلات التي تحتوي خانات تراكمية فقط (بدون معادلات x)، تغيّرت شاشة الإدخالات إلى جدول سريع بدل النافذة المنبثقة',
@@ -1778,7 +1788,7 @@ const CHANGELOG = [
     ]
   },
   {
-    version: 18,
+    version: 'v18',
     title: 'دليل الاستخدام + تحديثات على قوائم المعادلات',
     items: [
       'أُضيف "📚 دليل الاستخدام" إلى القائمة الجانبية ☰: شرح كامل لكل خصائص التطبيق داخل التطبيق نفسه، مع خانة بحث تفلتر الأقسام فوريًا',
@@ -1787,7 +1797,7 @@ const CHANGELOG = [
     ]
   },
   {
-    version: 17,
+    version: 'v17',
     title: 'إضافة "ما الجديد؟"',
     items: [
       'أُضيفت هذه النافذة نفسها: تعريف مختصر بكل تحديث جديد ينزل على التطبيق، متاح دائمًا من القائمة الجانبية ☰',
@@ -1795,7 +1805,7 @@ const CHANGELOG = [
     ]
   },
   {
-    version: 16,
+    version: 'v16',
     title: 'تبسيط الشريط العلوي',
     items: [
       'إزالة زر الجرس 🔔 من الشريط العلوي لأنه لم يكن يقوم بأي شيء عند الضغط عليه (وكانت النقطة الحمراء عليه مجرد تكرار للتنبيه الظاهر أصلًا في الصفحة الرئيسية)',
@@ -1805,19 +1815,20 @@ const CHANGELOG = [
 ];
 
 function hasSeenLatestWhatsNew() {
-  try { return Number(localStorage.getItem(WHATSNEW_SEEN_KEY) || 0) >= APP_RELEASE_VERSION; } catch (e) { return true; }
+  try { return localStorage.getItem(WHATSNEW_SEEN_KEY) === APP_VERSION; } catch (e) { return true; }
 }
 
 function markWhatsNewSeen() {
-  try { localStorage.setItem(WHATSNEW_SEEN_KEY, String(APP_RELEASE_VERSION)); } catch (e) { /* ignore */ }
+  try { localStorage.setItem(WHATSNEW_SEEN_KEY, APP_VERSION); } catch (e) { /* ignore */ }
   const badge = document.getElementById('whatsNewDot');
   if (badge) badge.style.display = 'none';
 }
 
+
 function renderWhatsNewBody() {
   return CHANGELOG.map((entry, i) => `
     <div style="margin-bottom:${i === CHANGELOG.length - 1 ? '0' : '18px'}">
-      <div style="font-weight:800;font-size:15.5px;color:var(--primary-text);margin-bottom:6px">🆕 ${escapeHtml(entry.title)} <span class="hint" style="display:inline">(v${entry.version})</span></div>
+      <div style="font-weight:800;font-size:15.5px;color:var(--primary-text);margin-bottom:6px">🆕 ${escapeHtml(entry.title)} <span class="hint" style="display:inline">(${escapeHtml(entry.version)})</span></div>
       <ul style="margin-right:20px;line-height:1.8">
         ${entry.items.map(t => `<li>${escapeHtml(t)}</li>`).join('')}
       </ul>
