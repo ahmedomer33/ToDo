@@ -497,21 +497,36 @@
   .widget-ring { display: flex; justify-content: center; margin: 4px 0; }
   .widget-line { font-size: 12.5px; color: #4b5563; text-align: center; line-height: 1.6; }
 
-  /* Bottom tab bar — persistent across all screens, calm styling */
-  body.has-bottom-tabs { padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
+  /* Bottom tab bar — persistent across all screens. Floating dark pill with an
+     animated "wave" indicator (a soft glowing hump) that slides beneath the
+     active tab, sliding from one tab to another with a smooth transition. */
+  body.has-bottom-tabs { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
   .bottom-tab-bar {
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    left: 14px;
+    right: 14px;
     display: flex;
-    background: #fff;
-    box-shadow: 0 -2px 12px rgba(31,41,55,0.06);
-    border-top: 1px solid rgba(31,41,55,0.06);
-    padding: 8px 6px calc(8px + env(safe-area-inset-bottom, 0px));
+    background: linear-gradient(180deg, #241a30, #171019);
+    border-radius: 30px;
+    box-shadow: 0 12px 28px rgba(20,10,30,0.35), 0 2px 6px rgba(0,0,0,0.15);
+    padding: 9px 6px;
     z-index: 500;
+    overflow: visible;
   }
+  .tab-hump {
+    position: absolute;
+    top: -17px;
+    height: 40px;
+    left: 0;
+    pointer-events: none;
+    z-index: 1;
+    transition: left 0.42s cubic-bezier(0.34, 1.25, 0.4, 1);
+  }
+  .tab-hump-svg { width: 100%; height: 100%; display: block; overflow: visible; }
   .tab-btn {
+    position: relative;
+    z-index: 2;
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -520,12 +535,14 @@
     background: none;
     padding: 6px 4px;
     border-radius: 14px;
-    color: #9CA3AF;
+    color: rgba(255,255,255,0.5);
     transform: none;
+    transition: color 0.3s ease;
   }
-  .tab-btn:hover { background: var(--primary-tint-3); transform: none; }
-  .tab-btn.active { color: var(--primary); background: var(--primary-tint-1); }
-  .tab-icon { font-size: 19px; line-height: 1; }
+  .tab-btn:hover { background: rgba(255,255,255,0.06); transform: none; }
+  .tab-btn.active { color: #E9DFFC; }
+  .tab-icon { font-size: 19px; line-height: 1; transition: transform 0.3s ease; }
+  .tab-btn.active .tab-icon { transform: translateY(-1px); }
   .tab-label { font-size: 10.5px; font-weight: 700; }
 
   /* Tasks */
@@ -1752,6 +1769,15 @@ function markOnboardingSeen() {
 // script) instead of a separate internal counter, so both stay in sync.
 const WHATSNEW_SEEN_KEY = 'todoAppWhatsNewSeenVersion';
 const CHANGELOG = [
+  {
+    version: 'V07.09.26',
+    title: 'شريط تنقّل بتصميم جديد وموجة متحركة',
+    items: [
+      'الشريط السفلي بقى عائم (Floating) بشكل كبسولة داكنة بدل الشريط الأبيض الثابت',
+      'أُضيف مؤشر على شكل موجة متحركة بيتنقّل بسلاسة تحت التبويب النشط عند الضغط على أي تبويب',
+      'ألوان التبويب النشط بقت أوضح فوق الخلفية الداكنة لسهولة التمييز'
+    ]
+  },
   {
     version: 'V06.09.26',
     title: 'تصميم جديد وتنقّل أسهل',
@@ -2999,12 +3025,24 @@ function goHomeTab(tab) {
   render();
 }
 
+// Remembers the hump's last horizontal position (as a % of the bar's width)
+// across re-renders, so that even though renderBottomTabBar() rebuilds the bar's
+// innerHTML from scratch every time, the wave indicator can still be animated
+// smoothly from its old spot to its new one (a manual "FLIP" animation).
+let _tabHumpLeftPct = null;
+
 function renderBottomTabBar() {
   const bar = document.getElementById('bottomTabBar');
   if (!bar) return;
   bar.style.display = 'flex';
   document.body.classList.add('has-bottom-tabs');
   const atHome = appScreen === null && !currentWorksheetId;
+
+  const allTabs = HOME_TABS.length + 1; // + settings
+  const activeIndex = appScreen === 'settings'
+    ? allTabs - 1
+    : (atHome ? HOME_TABS.findIndex(t => t.id === homeTab) : -1);
+
   const tabsHtml = HOME_TABS.map(t => `
     <button class="tab-btn ${atHome && homeTab === t.id ? 'active' : ''}" onclick="goHomeTab('${t.id}')">
       <span class="tab-icon">${t.icon}</span>
@@ -3017,7 +3055,47 @@ function renderBottomTabBar() {
       <span class="tab-label">الإعدادات</span>
     </button>
   `;
-  bar.innerHTML = tabsHtml + settingsHtml;
+
+  // A single soft "hill" silhouette — a glowing line that arcs up above the
+  // bar's top edge — sized to exactly one tab's width. Its container is
+  // repositioned (not redrawn) to slide it under whichever tab is active.
+  const humpSvg = `
+    <svg class="tab-hump-svg" viewBox="0 0 100 40" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="tabHumpGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#B79CF2"/>
+          <stop offset="100%" stop-color="#6C4BA6"/>
+        </linearGradient>
+      </defs>
+      <path d="M0,40 C18,40 24,4 50,4 C76,4 82,40 100,40 L100,40 L0,40 Z" fill="url(#tabHumpGrad)" opacity="0.15"/>
+      <path d="M0,40 C18,40 24,4 50,4 C76,4 82,40 100,40" fill="none" stroke="url(#tabHumpGrad)" stroke-width="3" stroke-linecap="round"/>
+    </svg>
+  `;
+
+  const humpWidthPct = 100 / allTabs;
+  const humpTargetPct = activeIndex >= 0 ? activeIndex * humpWidthPct : null;
+
+  bar.innerHTML = `
+    <div class="tab-hump" id="tabHump" style="width:${humpWidthPct}%; ${humpTargetPct === null ? 'opacity:0;' : ''}">
+      ${humpSvg}
+    </div>
+    ${tabsHtml}${settingsHtml}
+  `;
+
+  const humpEl = document.getElementById('tabHump');
+  if (humpEl && humpTargetPct !== null) {
+    const startPct = _tabHumpLeftPct === null ? humpTargetPct : _tabHumpLeftPct;
+    // 1) Place the (brand-new) hump element at its OLD position instantly...
+    humpEl.style.transition = 'none';
+    humpEl.style.left = startPct + '%';
+    humpEl.getBoundingClientRect(); // force layout so the browser registers the start position
+    // 2) ...then, next frame, animate it to the new position.
+    requestAnimationFrame(() => {
+      humpEl.style.transition = '';
+      humpEl.style.left = humpTargetPct + '%';
+    });
+    _tabHumpLeftPct = humpTargetPct;
+  }
 }
 
 function renderWorksheetsView(app) {
@@ -5410,7 +5488,7 @@ setInterval(checkReminders, 20000);
 // ============ Init ============
 // Single source of truth for the version shown on the splash screen — keep in
 // sync with the "version" field in package.json when it's bumped.
-const APP_VERSION = 'V06.09.26';
+const APP_VERSION = 'V07.09.26';
 
 function hideSplashScreen() {
   const el = document.getElementById('splashScreen');
