@@ -38,28 +38,22 @@
     --primary-glow-25: rgba(108,75,166,0.25);
     --overlay-tint: rgba(46,26,66,0.45);
 
-    /* ===== Vivid multi-color accent palette (education-app style) ===== */
-    --accent-coral: #FF6B6B;
-    --accent-coral-tint: #FFE7E7;
-    --accent-yellow: #FFB648;
-    --accent-yellow-tint: #FFF2DA;
-    --accent-teal: #2EC4B6;
-    --accent-teal-tint: #DDF6F3;
-    --accent-indigo: #7C6FE0;
-    --accent-indigo-tint: #EBE8FC;
-    --accent-blue: #4C8DFF;
-    --accent-blue-tint: #E6EFFF;
+    /* ===== Calm, muted accent palette (education-app style, low saturation) ===== */
+    --accent-coral: #C98B7A;
+    --accent-coral-tint: #F3E9E5;
+    --accent-yellow: #C9A15A;
+    --accent-yellow-tint: #F3ECDD;
+    --accent-teal: #6FA89E;
+    --accent-teal-tint: #E6EFED;
+    --accent-indigo: #8A82B0;
+    --accent-indigo-tint: #ECE9F3;
+    --accent-blue: #7C93B0;
+    --accent-blue-tint: #E9EDF2;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
   body {
     overflow-x: hidden;
-    background: #F4F6FB;
-    background-image:
-      radial-gradient(circle at 8% 6%, rgba(255,107,107,0.10) 0%, rgba(255,107,107,0) 40%),
-      radial-gradient(circle at 96% 18%, rgba(46,196,182,0.12) 0%, rgba(46,196,182,0) 42%),
-      radial-gradient(circle at 90% 90%, rgba(124,111,224,0.10) 0%, rgba(124,111,224,0) 45%),
-      radial-gradient(circle at 10% 95%, rgba(255,182,72,0.10) 0%, rgba(255,182,72,0) 45%);
-    background-attachment: fixed;
+    background: #F4F5F7;
     min-height: 100vh;
     padding: 20px;
     color: #333;
@@ -67,11 +61,11 @@
   .container { max-width: 900px; margin: 0 auto; }
   .card {
     background: #fff;
-    border-radius: 24px;
+    border-radius: 20px;
     padding: 24px;
     margin-bottom: 20px;
-    box-shadow: 0 8px 28px rgba(31,41,55,0.06);
-    border: 1px solid rgba(31,41,55,0.04);
+    box-shadow: 0 2px 10px rgba(31,41,55,0.05);
+    border: 1px solid rgba(31,41,55,0.06);
   }
   h1 { color: var(--primary-text); text-align: right; margin-bottom: 20px; font-size: 26px; font-weight: 800; }
 
@@ -82,19 +76,18 @@
     height: 44px;
     min-width: 44px;
     border-radius: 14px;
-    background: linear-gradient(135deg, var(--accent-coral), #FF8E72);
-    color: #fff;
+    background: var(--accent-coral-tint);
+    color: var(--accent-coral);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 20px;
     flex-shrink: 0;
-    box-shadow: 0 6px 14px rgba(255,107,107,0.28);
   }
-  .page-header-icon.hdr-purple { background: linear-gradient(135deg, var(--accent-indigo), var(--primary-darker)); box-shadow: 0 6px 14px rgba(124,111,224,0.3); }
-  .page-header-icon.hdr-teal { background: linear-gradient(135deg, var(--accent-teal), #1E9A8F); box-shadow: 0 6px 14px rgba(46,196,182,0.3); }
-  .page-header-icon.hdr-yellow { background: linear-gradient(135deg, var(--accent-yellow), #F5941F); box-shadow: 0 6px 14px rgba(255,182,72,0.3); }
-  .page-header-icon.hdr-blue { background: linear-gradient(135deg, var(--accent-blue), #2E6FE0); box-shadow: 0 6px 14px rgba(76,141,255,0.3); }
+  .page-header-icon.hdr-purple { background: var(--accent-indigo-tint); color: var(--accent-indigo); }
+  .page-header-icon.hdr-teal { background: var(--accent-teal-tint); color: var(--accent-teal); }
+  .page-header-icon.hdr-yellow { background: var(--accent-yellow-tint); color: var(--accent-yellow); }
+  .page-header-icon.hdr-blue { background: var(--accent-blue-tint); color: var(--accent-blue); }
   h2 { margin-bottom: 16px; color: #444; }
   button {
     cursor: pointer;
@@ -106,7 +99,7 @@
     transition: all 0.2s;
   }
   button:hover { transform: translateY(-2px); }
-  .btn-primary { background: var(--primary); color: #fff; box-shadow: 0 6px 14px var(--primary-shadow); }
+  .btn-primary { background: var(--primary); color: #fff; }
   .btn-primary:hover { background: var(--primary-dark); }
   .btn-success { background: #10b981; color: #fff; }
   .btn-danger { background: #ef4444; color: #fff; }
@@ -134,13 +127,13 @@
     justify-content: space-between;
     padding: 12px 14px;
     background: #fff;
-    border-radius: 18px;
+    border-radius: 16px;
     margin-bottom: 10px;
     cursor: pointer;
     transition: all 0.2s;
-    border: 1px solid rgba(31,41,55,0.05);
+    border: 1px solid rgba(31,41,55,0.06);
   }
-  .list-item:hover { border-color: var(--primary); box-shadow: 0 6px 18px rgba(31,41,55,0.08); transform: translateY(-1px); }
+  .list-item:hover { border-color: var(--primary-border-hover); box-shadow: 0 2px 10px rgba(31,41,55,0.06); }
   .list-info { display: flex; align-items: center; gap: 12px; }
   .list-icon {
     font-size: 22px;
@@ -190,20 +183,20 @@
     max-width: 900px;
     margin: 0 auto;
     background: #fff;
-    border-radius: 20px;
+    border-radius: 18px;
     padding: 10px 14px;
     display: flex;
     align-items: center;
     gap: 10px;
-    box-shadow: 0 8px 24px rgba(31,41,55,0.07);
+    box-shadow: 0 2px 10px rgba(31,41,55,0.05);
   }
   .icon-btn {
     width: 40px;
     height: 40px;
     min-width: 40px;
     border-radius: 13px;
-    background: var(--accent-coral-tint);
-    color: var(--accent-coral);
+    background: var(--primary-tint-4);
+    color: #555;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -212,7 +205,7 @@
     position: relative;
     flex-shrink: 0;
   }
-  .icon-btn:hover { background: #FFDADA; }
+  .icon-btn:hover { background: var(--primary-icon-hover); }
   .header-search {
     flex: 1;
     display: flex;
@@ -236,7 +229,7 @@
     height: 40px;
     min-width: 40px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent-teal), var(--accent-indigo));
+    background: var(--accent-indigo);
     color: #fff;
     display: flex;
     align-items: center;
@@ -322,16 +315,15 @@
 
   /* Alert banner */
   .alert-banner {
-    background: linear-gradient(90deg, var(--accent-coral), #FF9166);
+    background: var(--accent-coral);
     color: #fff;
-    border-radius: 20px;
+    border-radius: 18px;
     padding: 16px 18px;
     margin-bottom: 20px;
     display: flex;
     align-items: center;
     gap: 14px;
     cursor: default;
-    box-shadow: 0 10px 24px rgba(255,107,107,0.25);
   }
   .alert-icon {
     width: 40px;
@@ -436,11 +428,10 @@
   }
   .widget-card {
     background: #fff;
-    border: 1px solid rgba(31,41,55,0.05);
-    border-radius: 18px;
+    border: 1px solid rgba(31,41,55,0.06);
+    border-radius: 16px;
     padding: 10px 12px 14px;
     position: relative;
-    box-shadow: 0 6px 16px rgba(31,41,55,0.05);
   }
   .widget-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
   .widget-reorder { display: flex; gap: 4px; }
@@ -469,20 +460,18 @@
   .widget-ring { display: flex; justify-content: center; margin: 4px 0; }
   .widget-line { font-size: 12.5px; color: #4b5563; text-align: center; line-height: 1.6; }
 
-  /* Bottom tab bar (home screen only) — floating rounded pill, education-app style */
-  body.has-bottom-tabs { padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px)); }
+  /* Bottom tab bar — persistent across all screens, calm styling */
+  body.has-bottom-tabs { padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
   .bottom-tab-bar {
     position: fixed;
-    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
-    left: 14px;
-    right: 14px;
-    max-width: 872px;
-    margin: 0 auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
     display: flex;
     background: #fff;
-    border-radius: 22px;
-    box-shadow: 0 12px 30px rgba(31,41,55,0.14);
-    padding: 8px 8px;
+    box-shadow: 0 -2px 12px rgba(31,41,55,0.06);
+    border-top: 1px solid rgba(31,41,55,0.06);
+    padding: 8px 6px calc(8px + env(safe-area-inset-bottom, 0px));
     z-index: 500;
   }
   .tab-btn {
@@ -492,17 +481,13 @@
     align-items: center;
     gap: 3px;
     background: none;
-    padding: 7px 4px;
-    border-radius: 16px;
-    color: #B4B9C6;
+    padding: 6px 4px;
+    border-radius: 14px;
+    color: #9CA3AF;
     transform: none;
   }
   .tab-btn:hover { background: var(--primary-tint-3); transform: none; }
-  .tab-btn.active {
-    color: #fff;
-    background: linear-gradient(135deg, var(--accent-coral), var(--accent-indigo));
-    box-shadow: 0 6px 16px rgba(124,111,224,0.32);
-  }
+  .tab-btn.active { color: var(--primary); background: var(--primary-tint-1); }
   .tab-icon { font-size: 19px; line-height: 1; }
   .tab-label { font-size: 10.5px; font-weight: 700; }
 
@@ -1854,6 +1839,8 @@ function replayOnboarding() {
   onboardingStep = 0;
   document.getElementById('appHeaderWrap').style.display = 'none';
   document.getElementById('app').style.display = 'none';
+  const bar = document.getElementById('bottomTabBar');
+  if (bar) { bar.style.display = 'none'; document.body.classList.remove('has-bottom-tabs'); }
   closeDrawer();
   document.getElementById('onboardingScreen').style.display = 'flex';
   renderOnboarding();
@@ -2378,6 +2365,8 @@ function updateAvatarUI() {
 function showAuthScreen() {
   document.getElementById('appHeaderWrap').style.display = 'none';
   document.getElementById('app').style.display = 'none';
+  const bar = document.getElementById('bottomTabBar');
+  if (bar) { bar.style.display = 'none'; document.body.classList.remove('has-bottom-tabs'); }
   closeDrawer();
   document.getElementById('authScreen').style.display = 'block';
   renderAuthScreen();
@@ -2937,19 +2926,38 @@ function switchHomeTab(tab) {
   render();
 }
 
+// Jumps back to the top-level home screen on a given tab, from anywhere in the
+// app (inside a worksheet, a list, settings, or admin) — used by the persistent
+// bottom bar so switching sections always works in one tap.
+function goHomeTab(tab) {
+  appScreen = null;
+  currentWorksheetId = null;
+  currentListId = null;
+  data.lists = undefined;
+  homeTab = tab;
+  resetSearch();
+  render();
+}
+
 function renderBottomTabBar() {
   const bar = document.getElementById('bottomTabBar');
   if (!bar) return;
-  const showBar = appScreen !== 'settings' && appScreen !== 'admin' && !currentWorksheetId;
-  if (!showBar) { bar.style.display = 'none'; document.body.classList.remove('has-bottom-tabs'); return; }
   bar.style.display = 'flex';
   document.body.classList.add('has-bottom-tabs');
-  bar.innerHTML = HOME_TABS.map(t => `
-    <button class="tab-btn ${homeTab === t.id ? 'active' : ''}" onclick="switchHomeTab('${t.id}')">
+  const atHome = appScreen === null && !currentWorksheetId;
+  const tabsHtml = HOME_TABS.map(t => `
+    <button class="tab-btn ${atHome && homeTab === t.id ? 'active' : ''}" onclick="goHomeTab('${t.id}')">
       <span class="tab-icon">${t.icon}</span>
       <span class="tab-label">${t.label}</span>
     </button>
   `).join('');
+  const settingsHtml = `
+    <button class="tab-btn ${appScreen === 'settings' ? 'active' : ''}" onclick="openSettingsScreen()">
+      <span class="tab-icon">⚙️</span>
+      <span class="tab-label">الإعدادات</span>
+    </button>
+  `;
+  bar.innerHTML = tabsHtml + settingsHtml;
 }
 
 function renderWorksheetsView(app) {
@@ -3093,7 +3101,7 @@ function renderListsView(app) {
   let html = `
     <div class="page-header">
       <button class="icon-btn" onclick="goBackToWorksheets()" title="العودة">→</button>
-      <div class="page-header-icon hdr-teal"><img src="logo-icon.png" alt="Focus Todo" style="width:24px;height:24px;filter:brightness(0) invert(1)"></div>
+      <div class="page-header-icon hdr-teal"><img src="logo-icon.png" alt="Focus Todo" style="width:24px;height:24px"></div>
       <h1>Focus Todo</h1>
     </div>
   `;
