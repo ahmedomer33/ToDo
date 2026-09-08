@@ -498,11 +498,10 @@
   .widget-line { font-size: 12.5px; color: #4b5563; text-align: center; line-height: 1.6; }
 
   /* Bottom tab bar — persistent across all screens, calm styling matching the
-     rest of the app (white pill, purple accent). An animated "wave" indicator
-     (a soft glowing hump in the app's primary color) slides beneath whichever
-     tab is active. Uses inset-inline-start (not left/right) so it lands on the
-     correct tab regardless of the page's direction — this page is dir="rtl",
-     where flex items lay out right-to-left. */
+     rest of the app (white pill, purple accent). The active tab's icon simply
+     lifts up a touch with a soft shadow underneath it — no extra indicator
+     graphic. A raised circular "+" button sits in the middle of the bar and
+     adds an item to whatever screen is currently open. */
   body.has-bottom-tabs { padding-bottom: calc(94px + env(safe-area-inset-bottom, 0px)); }
   .bottom-tab-bar {
     position: fixed;
@@ -510,6 +509,7 @@
     left: 14px;
     right: 14px;
     display: flex;
+    align-items: center;
     background: #fff;
     border-radius: 28px;
     box-shadow: 0 8px 24px rgba(62,42,99,0.14), 0 2px 6px rgba(31,41,55,0.06);
@@ -518,19 +518,8 @@
     z-index: 500;
     overflow: visible;
   }
-  .tab-hump {
-    position: absolute;
-    top: -13px;
-    height: 32px;
-    inset-inline-start: 0;
-    pointer-events: none;
-    z-index: 1;
-    transition: inset-inline-start 0.42s cubic-bezier(0.34, 1.25, 0.4, 1);
-  }
-  .tab-hump-svg { width: 100%; height: 100%; display: block; overflow: visible; }
   .tab-btn {
     position: relative;
-    z-index: 2;
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -545,9 +534,34 @@
   }
   .tab-btn:hover { background: var(--primary-tint-3); transform: none; }
   .tab-btn.active { color: var(--primary); }
-  .tab-icon { font-size: 19px; line-height: 1; transition: transform 0.3s ease; }
-  .tab-btn.active .tab-icon { transform: translateY(-1px); }
+  .tab-icon { font-size: 19px; line-height: 1; transition: transform 0.25s ease, filter 0.25s ease; }
+  .tab-btn.active .tab-icon {
+    transform: translateY(-5px);
+    filter: drop-shadow(0 5px 5px rgba(108,75,166,0.35));
+  }
   .tab-label { font-size: 10.5px; font-weight: 700; }
+
+  /* Center "create" button — raised above the bar, works on whichever screen
+     is currently open (see handleCenterCreate() in the script). */
+  .tab-create-btn {
+    flex: 0 0 auto;
+    width: 50px;
+    height: 50px;
+    margin-top: -26px;
+    border-radius: 50%;
+    background: linear-gradient(155deg, #8B6FCE, var(--primary));
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    line-height: 1;
+    box-shadow: 0 8px 16px rgba(108,75,166,0.4), 0 0 0 5px #fff;
+    transition: transform 0.2s ease;
+  }
+  .tab-create-btn:hover { transform: translateY(-2px) scale(1.04); }
+  .tab-create-btn:active { transform: scale(0.94); }
+  .tab-create-btn.disabled { opacity: 0.4; box-shadow: 0 4px 10px rgba(108,75,166,0.25), 0 0 0 5px #fff; pointer-events: none; }
 
   /* Tasks */
   .task-item {
@@ -3029,11 +3043,35 @@ function goHomeTab(tab) {
   render();
 }
 
-// Remembers the hump's last horizontal position (as a % of the bar's width)
-// across re-renders, so that even though renderBottomTabBar() rebuilds the bar's
-// innerHTML from scratch every time, the wave indicator can still be animated
-// smoothly from its old spot to its new one (a manual "FLIP" animation).
-let _tabHumpLeftPct = null;
+// Whether there's a sensible "add" action for whatever screen is currently
+// open — used both to decide what handleCenterCreate() should do, and to
+// grey out the center button when there's nothing to add here.
+function centerCreateAvailable() {
+  if (currentWorksheetId && currentListId) return true; // inside a list: always has an add action
+  if (currentWorksheetId && !currentListId) return true; // inside a worksheet's lists
+  if (appScreen === null && !currentWorksheetId && homeTab === 'main') return true; // worksheets home tab
+  return false; // widgets / stats / settings / admin: nothing to add here
+}
+
+// The center "+" button acts on whatever screen the person is currently
+// looking at, instead of navigating anywhere itself.
+function handleCenterCreate() {
+  if (currentWorksheetId && currentListId) {
+    const list = (data.lists || []).find(l => l.id === currentListId);
+    if (!list) return;
+    if (list.type === 'notes') { openNewNoteModal(); return; }
+    if (list.type === 'formulas') {
+      if (isPureAccumulateList(list)) { addAccumulateRow(); return; }
+      if (!list.fields || list.fields.length === 0) { openNewFieldModal(); return; }
+      openNewEntryModal();
+      return;
+    }
+    openNewTaskModal(); // 'todo' and 'habits' both add a new task/habit definition
+    return;
+  }
+  if (currentWorksheetId && !currentListId) { openNewListModal(); return; }
+  if (appScreen === null && !currentWorksheetId && homeTab === 'main') { openNewWorksheetModal(); return; }
+}
 
 function renderBottomTabBar() {
   const bar = document.getElementById('bottomTabBar');
@@ -3042,64 +3080,28 @@ function renderBottomTabBar() {
   document.body.classList.add('has-bottom-tabs');
   const atHome = appScreen === null && !currentWorksheetId;
 
-  const allTabs = HOME_TABS.length + 1; // + settings
-  const activeIndex = appScreen === 'settings'
-    ? allTabs - 1
-    : (atHome ? HOME_TABS.findIndex(t => t.id === homeTab) : -1);
-
-  const tabsHtml = HOME_TABS.map(t => `
+  // The "+" create button sits in the middle of HOME_TABS, splitting it
+  // roughly in half (e.g. with 3 tabs: first 2, then "+", then the last 1).
+  const splitAt = Math.ceil(HOME_TABS.length / 2);
+  const renderTabBtn = t => `
     <button class="tab-btn ${atHome && homeTab === t.id ? 'active' : ''}" onclick="goHomeTab('${t.id}')">
       <span class="tab-icon">${t.icon}</span>
       <span class="tab-label">${t.label}</span>
     </button>
-  `).join('');
+  `;
+  const firstHalfHtml = HOME_TABS.slice(0, splitAt).map(renderTabBtn).join('');
+  const secondHalfHtml = HOME_TABS.slice(splitAt).map(renderTabBtn).join('');
   const settingsHtml = `
     <button class="tab-btn ${appScreen === 'settings' ? 'active' : ''}" onclick="openSettingsScreen()">
       <span class="tab-icon">⚙️</span>
       <span class="tab-label">الإعدادات</span>
     </button>
   `;
-
-  // A single soft "hill" silhouette — a glowing line that arcs up above the
-  // bar's top edge — sized to exactly one tab's width. Its container is
-  // repositioned (not redrawn) to slide it under whichever tab is active.
-  const humpSvg = `
-    <svg class="tab-hump-svg" viewBox="0 0 100 40" preserveAspectRatio="none">
-      <defs>
-        <linearGradient id="tabHumpGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#8B6FCE"/>
-          <stop offset="100%" stop-color="#6C4BA6"/>
-        </linearGradient>
-      </defs>
-      <path d="M0,40 C18,40 24,6 50,6 C76,6 82,40 100,40 L100,40 L0,40 Z" fill="url(#tabHumpGrad)" opacity="0.12"/>
-      <path d="M0,40 C18,40 24,6 50,6 C76,6 82,40 100,40" fill="none" stroke="url(#tabHumpGrad)" stroke-width="3" stroke-linecap="round"/>
-    </svg>
+  const createHtml = `
+    <button class="tab-create-btn ${centerCreateAvailable() ? '' : 'disabled'}" onclick="handleCenterCreate()" title="إضافة" aria-label="إضافة">+</button>
   `;
 
-  const humpWidthPct = 100 / allTabs;
-  const humpTargetPct = activeIndex >= 0 ? activeIndex * humpWidthPct : null;
-
-  bar.innerHTML = `
-    <div class="tab-hump" id="tabHump" style="width:${humpWidthPct}%; ${humpTargetPct === null ? 'opacity:0;' : ''}">
-      ${humpSvg}
-    </div>
-    ${tabsHtml}${settingsHtml}
-  `;
-
-  const humpEl = document.getElementById('tabHump');
-  if (humpEl && humpTargetPct !== null) {
-    const startPct = _tabHumpLeftPct === null ? humpTargetPct : _tabHumpLeftPct;
-    // 1) Place the (brand-new) hump element at its OLD position instantly...
-    humpEl.style.transition = 'none';
-    humpEl.style.insetInlineStart = startPct + '%';
-    humpEl.getBoundingClientRect(); // force layout so the browser registers the start position
-    // 2) ...then, next frame, animate it to the new position.
-    requestAnimationFrame(() => {
-      humpEl.style.transition = '';
-      humpEl.style.insetInlineStart = humpTargetPct + '%';
-    });
-    _tabHumpLeftPct = humpTargetPct;
-  }
+  bar.innerHTML = firstHalfHtml + createHtml + secondHalfHtml + settingsHtml;
 }
 
 function renderWorksheetsView(app) {
