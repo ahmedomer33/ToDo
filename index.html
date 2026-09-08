@@ -37,15 +37,28 @@
     --primary-glow-14: rgba(108,75,166,0.14);
     --primary-glow-25: rgba(108,75,166,0.25);
     --overlay-tint: rgba(46,26,66,0.45);
+
+    /* ===== Vivid multi-color accent palette (education-app style) ===== */
+    --accent-coral: #FF6B6B;
+    --accent-coral-tint: #FFE7E7;
+    --accent-yellow: #FFB648;
+    --accent-yellow-tint: #FFF2DA;
+    --accent-teal: #2EC4B6;
+    --accent-teal-tint: #DDF6F3;
+    --accent-indigo: #7C6FE0;
+    --accent-indigo-tint: #EBE8FC;
+    --accent-blue: #4C8DFF;
+    --accent-blue-tint: #E6EFFF;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
   body {
     overflow-x: hidden;
-    background: var(--primary-tint-2);
+    background: #F4F6FB;
     background-image:
-      radial-gradient(circle at 8% 10%, var(--primary-glow-14) 0%, var(--primary-glow-0) 45%),
-      radial-gradient(circle at 95% 30%, rgba(249,115,22,0.10) 0%, rgba(249,115,22,0) 40%),
-      radial-gradient(circle at 15% 95%, var(--primary-shadow) 0%, var(--primary-glow-0) 45%);
+      radial-gradient(circle at 8% 6%, rgba(255,107,107,0.10) 0%, rgba(255,107,107,0) 40%),
+      radial-gradient(circle at 96% 18%, rgba(46,196,182,0.12) 0%, rgba(46,196,182,0) 42%),
+      radial-gradient(circle at 90% 90%, rgba(124,111,224,0.10) 0%, rgba(124,111,224,0) 45%),
+      radial-gradient(circle at 10% 95%, rgba(255,182,72,0.10) 0%, rgba(255,182,72,0) 45%);
     background-attachment: fixed;
     min-height: 100vh;
     padding: 20px;
@@ -54,28 +67,34 @@
   .container { max-width: 900px; margin: 0 auto; }
   .card {
     background: #fff;
-    border-radius: 22px;
+    border-radius: 24px;
     padding: 24px;
     margin-bottom: 20px;
-    box-shadow: 0 4px 24px var(--primary-shadow);
-    border: 1px solid var(--primary-shadow-soft);
+    box-shadow: 0 8px 28px rgba(31,41,55,0.06);
+    border: 1px solid rgba(31,41,55,0.04);
   }
   h1 { color: var(--primary-text); text-align: right; margin-bottom: 20px; font-size: 26px; font-weight: 800; }
 
   .page-header { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
   .page-header h1 { margin: 0; font-size: 20px; }
   .page-header-icon {
-    width: 42px;
-    height: 42px;
-    min-width: 42px;
-    border-radius: 13px;
-    background: var(--primary-tint-1);
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--accent-coral), #FF8E72);
+    color: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 20px;
     flex-shrink: 0;
+    box-shadow: 0 6px 14px rgba(255,107,107,0.28);
   }
+  .page-header-icon.hdr-purple { background: linear-gradient(135deg, var(--accent-indigo), var(--primary-darker)); box-shadow: 0 6px 14px rgba(124,111,224,0.3); }
+  .page-header-icon.hdr-teal { background: linear-gradient(135deg, var(--accent-teal), #1E9A8F); box-shadow: 0 6px 14px rgba(46,196,182,0.3); }
+  .page-header-icon.hdr-yellow { background: linear-gradient(135deg, var(--accent-yellow), #F5941F); box-shadow: 0 6px 14px rgba(255,182,72,0.3); }
+  .page-header-icon.hdr-blue { background: linear-gradient(135deg, var(--accent-blue), #2E6FE0); box-shadow: 0 6px 14px rgba(76,141,255,0.3); }
   h2 { margin-bottom: 16px; color: #444; }
   button {
     cursor: pointer;
@@ -87,7 +106,7 @@
     transition: all 0.2s;
   }
   button:hover { transform: translateY(-2px); }
-  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary { background: var(--primary); color: #fff; box-shadow: 0 6px 14px var(--primary-shadow); }
   .btn-primary:hover { background: var(--primary-dark); }
   .btn-success { background: #10b981; color: #fff; }
   .btn-danger { background: #ef4444; color: #fff; }
@@ -115,25 +134,31 @@
     justify-content: space-between;
     padding: 12px 14px;
     background: #fff;
-    border-radius: 16px;
+    border-radius: 18px;
     margin-bottom: 10px;
     cursor: pointer;
     transition: all 0.2s;
-    border: 1px solid var(--primary-border);
+    border: 1px solid rgba(31,41,55,0.05);
   }
-  .list-item:hover { border-color: var(--primary); box-shadow: 0 4px 14px var(--primary-shadow); }
+  .list-item:hover { border-color: var(--primary); box-shadow: 0 6px 18px rgba(31,41,55,0.08); transform: translateY(-1px); }
   .list-info { display: flex; align-items: center; gap: 12px; }
   .list-icon {
     font-size: 22px;
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
+    width: 46px;
+    height: 46px;
+    min-width: 46px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--primary-tint-1);
-    border-radius: 12px;
+    background: var(--accent-indigo-tint);
+    border-radius: 13px;
   }
+  /* Rotating color set for icon chips, applied cyclically in JS via colorClass() */
+  .list-icon.c0, .widget-icon.c0 { background: var(--accent-coral-tint); }
+  .list-icon.c1, .widget-icon.c1 { background: var(--accent-yellow-tint); }
+  .list-icon.c2, .widget-icon.c2 { background: var(--accent-teal-tint); }
+  .list-icon.c3, .widget-icon.c3 { background: var(--accent-indigo-tint); }
+  .list-icon.c4, .widget-icon.c4 { background: var(--accent-blue-tint); }
   .list-name { font-weight: 700; font-size: 15px; color: var(--primary-text); }
   .list-count { color: #6b7280; font-size: 13px; margin-top: 2px; }
 
@@ -155,7 +180,7 @@
     position: sticky;
     top: 0;
     z-index: 60;
-    background: var(--primary-tint-2);
+    background: #F4F6FB;
     padding: 12px 0 10px 0;
     margin: -20px -20px 16px -20px;
     padding-left: 20px;
@@ -165,19 +190,20 @@
     max-width: 900px;
     margin: 0 auto;
     background: #fff;
-    border-radius: 18px;
+    border-radius: 20px;
     padding: 10px 14px;
     display: flex;
     align-items: center;
     gap: 10px;
-    box-shadow: 0 4px 20px var(--primary-shadow);
+    box-shadow: 0 8px 24px rgba(31,41,55,0.07);
   }
   .icon-btn {
     width: 40px;
     height: 40px;
     min-width: 40px;
-    border-radius: 12px;
-    background: var(--primary-tint-4);
+    border-radius: 13px;
+    background: var(--accent-coral-tint);
+    color: var(--accent-coral);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -186,14 +212,14 @@
     position: relative;
     flex-shrink: 0;
   }
-  .icon-btn:hover { background: var(--primary-icon-hover); }
+  .icon-btn:hover { background: #FFDADA; }
   .header-search {
     flex: 1;
     display: flex;
     align-items: center;
     gap: 8px;
     background: var(--primary-tint-4);
-    border-radius: 12px;
+    border-radius: 13px;
     padding: 0 12px;
     min-width: 0;
   }
@@ -210,7 +236,7 @@
     height: 40px;
     min-width: 40px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--primary), var(--primary-darker));
+    background: linear-gradient(135deg, var(--accent-teal), var(--accent-indigo));
     color: #fff;
     display: flex;
     align-items: center;
@@ -296,15 +322,16 @@
 
   /* Alert banner */
   .alert-banner {
-    background: linear-gradient(90deg, #f97316, #ea580c);
+    background: linear-gradient(90deg, var(--accent-coral), #FF9166);
     color: #fff;
-    border-radius: 16px;
+    border-radius: 20px;
     padding: 16px 18px;
     margin-bottom: 20px;
     display: flex;
     align-items: center;
     gap: 14px;
     cursor: default;
+    box-shadow: 0 10px 24px rgba(255,107,107,0.25);
   }
   .alert-icon {
     width: 40px;
@@ -408,11 +435,12 @@
     gap: 12px;
   }
   .widget-card {
-    background: var(--primary-tint-5);
-    border: 1px solid var(--primary-border);
-    border-radius: 14px;
+    background: #fff;
+    border: 1px solid rgba(31,41,55,0.05);
+    border-radius: 18px;
     padding: 10px 12px 14px;
     position: relative;
+    box-shadow: 0 6px 16px rgba(31,41,55,0.05);
   }
   .widget-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
   .widget-reorder { display: flex; gap: 4px; }
@@ -426,23 +454,35 @@
     border-radius: 6px;
   }
   .widget-unpin:hover { background: #fee2e2; color: #ef4444; }
-  .widget-icon { font-size: 22px; text-align: center; margin-top: 2px; }
+  .widget-icon {
+    font-size: 20px;
+    width: 38px;
+    height: 38px;
+    line-height: 38px;
+    text-align: center;
+    margin: 2px auto 6px;
+    border-radius: 11px;
+    background: var(--accent-indigo-tint);
+  }
   .widget-name { font-weight: 800; font-size: 14px; color: var(--primary-text); text-align: center; margin-top: 4px; }
   .widget-worksheet { font-size: 11.5px; color: #9CA3AF; text-align: center; margin-bottom: 6px; }
   .widget-ring { display: flex; justify-content: center; margin: 4px 0; }
   .widget-line { font-size: 12.5px; color: #4b5563; text-align: center; line-height: 1.6; }
 
-  /* Bottom tab bar (home screen only) */
-  body.has-bottom-tabs { padding-bottom: calc(78px + env(safe-area-inset-bottom, 0px)); }
+  /* Bottom tab bar (home screen only) — floating rounded pill, education-app style */
+  body.has-bottom-tabs { padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px)); }
   .bottom-tab-bar {
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    left: 14px;
+    right: 14px;
+    max-width: 872px;
+    margin: 0 auto;
     display: flex;
     background: #fff;
-    box-shadow: 0 -4px 20px var(--primary-shadow);
-    padding: 8px 6px calc(8px + env(safe-area-inset-bottom, 0px));
+    border-radius: 22px;
+    box-shadow: 0 12px 30px rgba(31,41,55,0.14);
+    padding: 8px 8px;
     z-index: 500;
   }
   .tab-btn {
@@ -452,15 +492,19 @@
     align-items: center;
     gap: 3px;
     background: none;
-    padding: 6px 4px;
-    border-radius: 14px;
-    color: #9CA3AF;
+    padding: 7px 4px;
+    border-radius: 16px;
+    color: #B4B9C6;
     transform: none;
   }
   .tab-btn:hover { background: var(--primary-tint-3); transform: none; }
-  .tab-btn.active { color: var(--primary); background: var(--primary-tint-1); }
-  .tab-icon { font-size: 20px; line-height: 1; }
-  .tab-label { font-size: 11px; font-weight: 700; }
+  .tab-btn.active {
+    color: #fff;
+    background: linear-gradient(135deg, var(--accent-coral), var(--accent-indigo));
+    box-shadow: 0 6px 16px rgba(124,111,224,0.32);
+  }
+  .tab-icon { font-size: 19px; line-height: 1; }
+  .tab-label { font-size: 10.5px; font-weight: 700; }
 
   /* Tasks */
   .task-item {
@@ -2387,6 +2431,15 @@ function escapeHtml(str) {
 }
 const escapeAttr = escapeHtml;
 
+// Cycles list/worksheet/widget icon chips through a set of vivid pastel colors
+// so grids of cards read like the colorful-education-app reference design.
+function colorClass(seed) {
+  const s = String(seed || '');
+  let hash = 0;
+  for (let i = 0; i < s.length; i++) hash = (hash * 31 + s.charCodeAt(i)) | 0;
+  return 'c' + (Math.abs(hash) % 5);
+}
+
 function formatReminderBadge(task) {
   const r = task.reminder;
   if (!r || !r.enabled || !r.time) return '';
@@ -2631,7 +2684,7 @@ function renderWidgetCard(listId, idx, total) {
         <button class="widget-unpin" title="إلغاء تثبيت هذا الويدجت" onclick="event.stopPropagation(); toggleWidgetPin('${list.id}')">✕</button>
       </div>
       <div onclick="openPinnedWidget('${list.id}')" style="cursor:pointer">
-        <div class="widget-icon">${list.icon}</div>
+        <div class="widget-icon ${colorClass(list.id)}">${list.icon}</div>
         <div class="widget-name">${escapeHtml(list.name)}</div>
         <div class="widget-worksheet">${escapeHtml(worksheet.name)}</div>
         ${ringHtml ? `<div class="widget-ring">${ringHtml}</div>` : ''}
@@ -2688,7 +2741,7 @@ function renderSettingsView(app) {
   const html = `
     <button class="btn-secondary back-btn" onclick="closeAppScreen()">→ العودة</button>
     <div class="page-header">
-      <div class="page-header-icon">⚙️</div>
+      <div class="page-header-icon hdr-purple">⚙️</div>
       <h1>إعدادات الحساب</h1>
     </div>
 
@@ -2843,7 +2896,7 @@ function renderAdminView(app) {
   const html = `
     <button class="btn-secondary back-btn" onclick="closeAppScreen()">→ العودة</button>
     <div class="page-header">
-      <div class="page-header-icon">👑</div>
+      <div class="page-header-icon hdr-yellow">👑</div>
       <h1>لوحة الأدمن</h1>
     </div>
 
@@ -2902,7 +2955,7 @@ function renderBottomTabBar() {
 function renderWorksheetsView(app) {
   let html = `
     <div class="page-header">
-      <div class="page-header-icon">🗂️</div>
+      <div class="page-header-icon hdr-blue">🗂️</div>
       <h1>أوراق العمل</h1>
     </div>
   `;
@@ -3017,7 +3070,7 @@ function renderWorksheetsView(app) {
           <div class="list-item">
             <div style="display:flex;align-items:center;justify-content:space-between;flex:1;gap:10px;cursor:pointer" onclick="openWorksheet('${ws.id}')">
               <div class="list-info">
-                <div class="list-icon">🗂️</div>
+                <div class="list-icon ${colorClass(ws.id)}">🗂️</div>
                 <div>
                   <div class="list-name">${escapeHtml(ws.name)}</div>
                   <div class="list-count">${count} قائمة</div>
@@ -3040,7 +3093,7 @@ function renderListsView(app) {
   let html = `
     <div class="page-header">
       <button class="icon-btn" onclick="goBackToWorksheets()" title="العودة">→</button>
-      <div class="page-header-icon"><img src="logo-icon.png" alt="Focus Todo" style="width:24px;height:24px"></div>
+      <div class="page-header-icon hdr-teal"><img src="logo-icon.png" alt="Focus Todo" style="width:24px;height:24px;filter:brightness(0) invert(1)"></div>
       <h1>Focus Todo</h1>
     </div>
   `;
@@ -3106,7 +3159,7 @@ function renderListsView(app) {
           </div>
           <div style="display:flex;align-items:center;justify-content:space-between;flex:1;gap:10px;cursor:pointer" onclick="openList('${list.id}')">
             <div class="list-info">
-              <div class="list-icon">${list.icon}</div>
+              <div class="list-icon ${colorClass(list.id)}">${list.icon}</div>
               <div>
                 <div class="list-name">${escapeHtml(list.name)}</div>
                 <div class="list-count">${subtitle}</div>
