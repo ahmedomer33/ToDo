@@ -432,6 +432,36 @@
   .widget-ring { display: flex; justify-content: center; margin: 4px 0; }
   .widget-line { font-size: 12.5px; color: #4b5563; text-align: center; line-height: 1.6; }
 
+  /* Bottom tab bar (home screen only) */
+  body.has-bottom-tabs { padding-bottom: calc(78px + env(safe-area-inset-bottom, 0px)); }
+  .bottom-tab-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    background: #fff;
+    box-shadow: 0 -4px 20px var(--primary-shadow);
+    padding: 8px 6px calc(8px + env(safe-area-inset-bottom, 0px));
+    z-index: 500;
+  }
+  .tab-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    background: none;
+    padding: 6px 4px;
+    border-radius: 14px;
+    color: #9CA3AF;
+    transform: none;
+  }
+  .tab-btn:hover { background: var(--primary-tint-3); transform: none; }
+  .tab-btn.active { color: var(--primary); background: var(--primary-tint-1); }
+  .tab-icon { font-size: 20px; line-height: 1; }
+  .tab-label { font-size: 11px; font-weight: 700; }
+
   /* Tasks */
   .task-item {
     display: flex;
@@ -963,6 +993,7 @@
 <input type="file" id="avatarFileInput" accept="image/*" style="display:none" onchange="handleAvatarFile(event)">
 
 <div class="container" id="app" style="display:none"></div>
+<div class="bottom-tab-bar" id="bottomTabBar" style="display:none"></div>
 
 <!-- Modal: New/Edit Worksheet -->
 <div class="modal-overlay" id="worksheetModal">
@@ -1356,10 +1387,11 @@
         <summary>🗂️ أوراق العمل (Worksheets)</summary>
         <div class="guide-body">
           <p>أول شاشة تراها بعد تسجيل الدخول. ورقة العمل هي "حاوية" تجمع مجموعة قوائم مرتبطة ببعضها (مثلًا: ورقة "عملي" وورقة "شخصي" منفصلتين).</p>
+          <p>الشاشة الرئيسية مقسّمة إلى 3 تبويبات عبر شريط سفلي: 🗂️ <strong>الرئيسية</strong> (قائمة أوراق العمل)، 📌 <strong>الويدجتس</strong>، و📊 <strong>الإحصائيات</strong> — اضغط أي تبويب للتنقل بينها.</p>
           <ul>
             <li>➕ إنشاء ورقة عمل جديدة بالاسم الذي تريده</li>
             <li>✏️ تعديل / حذف من نفس الشاشة</li>
-            <li>في أعلى الشاشة إحصائيات عامة (نسبة الإنجاز الكلية، عدد المهام المنجزة/الجارية/غير المبدوءة) على شكل حلقات دائرية (Donut charts)</li>
+            <li>تبويب 📊 الإحصائيات يعرض نسبة الإنجاز الكلية، وعدد المهام المنجزة/الجارية/غير المبدوءة، على شكل حلقات دائرية (Donut charts)</li>
           </ul>
           <p>اضغط على أي ورقة عمل للدخول إلى قوائمها.</p>
         </div>
@@ -1368,8 +1400,8 @@
       <details class="guide-section">
         <summary>📌 الويدجتس (Widgets)</summary>
         <div class="guide-body">
-          <p>يمكنك تثبيت أي قائمة (من أي نوع ومن أي ورقة عمل) كـ "Widget" يظهر في أعلى شاشة "أوراق العمل" الرئيسية، لمتابعة أهم قوائمك دون الحاجة للدخول إليها كل مرة.</p>
-          <p><strong>كيف تثبّت قائمة:</strong> ادخل ورقة العمل، وبجانب أي قائمة اضغط 📍 لتثبيتها (تتحول إلى 📌 بعد التثبيت). لإلغاء التثبيت اضغط عليها مرة أخرى، أو اضغط ✕ على الويدجت نفسه من الشاشة الرئيسية.</p>
+          <p>يمكنك تثبيت أي قائمة (من أي نوع ومن أي ورقة عمل) كـ "Widget" يظهر في تبويب 📌 الويدجتس بالشريط السفلي للشاشة الرئيسية، لمتابعة أهم قوائمك دون الحاجة للدخول إليها كل مرة.</p>
+          <p><strong>كيف تثبّت قائمة:</strong> ادخل ورقة العمل، وبجانب أي قائمة اضغط 📍 لتثبيتها (تتحول إلى 📌 بعد التثبيت). لإلغاء التثبيت اضغط عليها مرة أخرى، أو اضغط ✕ على الويدجت نفسه من تبويب الويدجتس.</p>
           <p><strong>ماذا يعرض كل ويدجت:</strong></p>
           <ul>
             <li>قوائم المهام والعادات/العبادات: نسبة الإنجاز (الشهر الحالي أو اليوم الحالي) على شكل حلقة دائرية مصغّرة</li>
@@ -1588,6 +1620,7 @@ function resetThemeColor() {
 // ============ State ============
 let data = { worksheets: [], pinnedWidgets: [] }; // placeholder; real per-user data is loaded after login (see loadData())
 let currentWorksheetId = null;
+let homeTab = 'main'; // 'main' | 'widgets' | 'stats' — the active bottom tab on the home screen
 let searchQuery = '';
 let editingWorksheetId = null;
 let currentListId = null;
@@ -1639,9 +1672,17 @@ function markOnboardingSeen() {
 // A lightweight, on-device "what's new" log. WHATSNEW_SEEN_KEY remembers the
 // highest version the person has already seen, so the modal only pops up
 // automatically once per update — they can always reopen it from the drawer.
-const APP_RELEASE_VERSION = 20;
+const APP_RELEASE_VERSION = 21;
 const WHATSNEW_SEEN_KEY = 'todoAppWhatsNewSeenVersion';
 const CHANGELOG = [
+  {
+    version: 21,
+    title: 'شريط تبويبات سفلي للشاشة الرئيسية',
+    items: [
+      'قُسّمت الشاشة الرئيسية (أوراق العمل) إلى 3 تبويبات عبر شريط سفلي: 🗂️ الرئيسية (أوراق العمل)، 📌 الويدجتس، 📊 الإحصائيات — بدل عرضها كلها فوق بعض',
+      'الهدف تخفيف الزحمة على الشاشة الرئيسية وتسهيل الوصول لكل قسم منفصلًا'
+    ]
+  },
   {
     version: 20,
     title: 'ويدجتس في الشاشة الرئيسية',
@@ -2446,14 +2487,16 @@ function statusLabel(s) {
 // ============ Render ============
 function render() {
   const app = document.getElementById('app');
-  if (appScreen === 'settings') { renderSettingsView(app); return; }
-  if (appScreen === 'admin') { renderAdminView(app); return; }
+  if (appScreen === 'settings') { renderSettingsView(app); renderBottomTabBar(); return; }
+  if (appScreen === 'admin') { renderAdminView(app); renderBottomTabBar(); return; }
   if (!currentWorksheetId) {
     renderWorksheetsView(app);
   } else if (!currentListId) {
     renderListsView(app);
+    renderBottomTabBar();
   } else {
     renderDetailView(app);
+    renderBottomTabBar();
   }
 }
 
@@ -2830,6 +2873,32 @@ function renderAdminView(app) {
   app.innerHTML = html;
 }
 
+const HOME_TABS = [
+  { id: 'main', icon: '🗂️', label: 'الرئيسية' },
+  { id: 'widgets', icon: '📌', label: 'الويدجتس' },
+  { id: 'stats', icon: '📊', label: 'الإحصائيات' }
+];
+
+function switchHomeTab(tab) {
+  homeTab = tab;
+  render();
+}
+
+function renderBottomTabBar() {
+  const bar = document.getElementById('bottomTabBar');
+  if (!bar) return;
+  const showBar = appScreen !== 'settings' && appScreen !== 'admin' && !currentWorksheetId;
+  if (!showBar) { bar.style.display = 'none'; document.body.classList.remove('has-bottom-tabs'); return; }
+  bar.style.display = 'flex';
+  document.body.classList.add('has-bottom-tabs');
+  bar.innerHTML = HOME_TABS.map(t => `
+    <button class="tab-btn ${homeTab === t.id ? 'active' : ''}" onclick="switchHomeTab('${t.id}')">
+      <span class="tab-icon">${t.icon}</span>
+      <span class="tab-label">${t.label}</span>
+    </button>
+  `).join('');
+}
+
 function renderWorksheetsView(app) {
   let html = `
     <div class="page-header">
@@ -2838,111 +2907,133 @@ function renderWorksheetsView(app) {
     </div>
   `;
 
-  const showNotifBanner = IS_NATIVE ? !nativeNotificationsGranted : ('Notification' in window && Notification.permission === 'default');
-  if (showNotifBanner) {
-    html += `
-      <div class="card" style="background:var(--primary-tint-1);border:1px solid var(--primary-border)">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-          <div>
-            <div style="font-weight:700">🔔 فعّل إشعارات التذكير</div>
-            <div class="hint">اسمح للتطبيق بإرسال إشعارات حتى تصلك تذكيرات المهام والعادات في وقتها.</div>
-          </div>
-          <button class="btn-primary" onclick="requestNotificationPermission()">تفعيل</button>
+  if (homeTab === 'widgets') {
+    const widgetsHtml = renderWidgetsSection();
+    html += widgetsHtml || `
+      <div class="card">
+        <div class="empty-state">
+          <div class="icon">📌</div>
+          <p>لا توجد ويدجتس مثبّتة بعد.</p>
+          <p>من داخل أي ورقة عمل، اضغط 📍 بجانب أي قائمة لتثبيتها هنا.</p>
         </div>
       </div>
     `;
-  }
-
-  const stats = computeGlobalStats();
-  const hasAlert = stats.notStartedCount > 0;
-
-  html += renderWidgetsSection();
-
-  if (stats.trackable > 0) {
-    html += `
-      <div class="alert-banner" style="${hasAlert ? '' : 'background:linear-gradient(90deg,var(--primary),var(--primary-dark))'}">
-        <div class="alert-icon">${hasAlert ? '⚠️' : '✅'}</div>
-        <div>
-          <div class="alert-title">${hasAlert ? 'تنبيه' : 'ممتاز! 🎉'}</div>
-          <div class="alert-sub">${hasAlert ? `${stats.notStartedCount} قائمة لم يبدأ العمل عليها بعد` : 'كل قوائمك القابلة للتتبع بدأت العمل عليها'}</div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2 style="margin-bottom:14px">📊 نظرة عامة</h2>
-        <div class="rings-grid">
-          <div>
-            ${renderDonutRing(stats.avg, 'var(--primary)')}
-            <div class="ring-label">متوسط الإنجاز</div>
-            <div class="ring-sub">عبر ${stats.trackable} قائمة</div>
-          </div>
-          <div>
-            ${renderDonutRing(stats.trackable ? Math.round(stats.doneCount / stats.trackable * 100) : 0, '#10b981')}
-            <div class="ring-label">مكتملة</div>
-            <div class="ring-sub">${stats.doneCount} من ${stats.trackable}</div>
-          </div>
-          <div>
-            ${renderDonutRing(stats.trackable ? Math.round(stats.inProgressCount / stats.trackable * 100) : 0, '#f59e0b')}
-            <div class="ring-label">قيد التنفيذ</div>
-            <div class="ring-sub">${stats.inProgressCount} من ${stats.trackable}</div>
-          </div>
-          <div>
-            ${renderDonutRing(stats.trackable ? Math.round(stats.notStartedCount / stats.trackable * 100) : 0, '#ef4444')}
-            <div class="ring-label">لم تبدأ</div>
-            <div class="ring-sub">${stats.notStartedCount} من ${stats.trackable}</div>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  const filteredWorksheets = data.worksheets.filter(ws => !searchQuery || ws.name.toLowerCase().includes(searchQuery));
-
-  if (!data.worksheets.length) {
-    html += `
-      <div class="card">
-        <div class="empty-state">
-          <div class="icon">🗂️</div>
-          <p>لا توجد أوراق عمل بعد.</p>
-          <p>أنشئ أول ورقة عمل لتبدأ بإضافة قوائمك (مثل: عملي، عائلتي، شخصي).</p>
-          <br>
-          <button class="btn-primary" onclick="openNewWorksheetModal()">+ إنشاء ورقة عمل</button>
-        </div>
-      </div>`;
-  } else if (!filteredWorksheets.length) {
-    html += `
-      <div class="card">
-        <div class="empty-state">
-          <div class="icon">🔎</div>
-          <p>لا توجد نتائج مطابقة لـ "${escapeHtml(searchQuery)}"</p>
-        </div>
-      </div>`;
-  } else {
-    html += `<div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <h2 style="margin:0">اختر ورقة عمل</h2>
-        <button class="btn-primary" onclick="openNewWorksheetModal()">+ ورقة جديدة</button>
-      </div>`;
-    filteredWorksheets.forEach(ws => {
-      const count = (ws.lists || []).length;
+  } else if (homeTab === 'stats') {
+    const stats = computeGlobalStats();
+    const hasAlert = stats.notStartedCount > 0;
+    if (stats.trackable > 0) {
       html += `
-        <div class="list-item">
-          <div style="display:flex;align-items:center;justify-content:space-between;flex:1;gap:10px;cursor:pointer" onclick="openWorksheet('${ws.id}')">
-            <div class="list-info">
-              <div class="list-icon">🗂️</div>
-              <div>
-                <div class="list-name">${escapeHtml(ws.name)}</div>
-                <div class="list-count">${count} قائمة</div>
-              </div>
+        <div class="alert-banner" style="${hasAlert ? '' : 'background:linear-gradient(90deg,var(--primary),var(--primary-dark))'}">
+          <div class="alert-icon">${hasAlert ? '⚠️' : '✅'}</div>
+          <div>
+            <div class="alert-title">${hasAlert ? 'تنبيه' : 'ممتاز! 🎉'}</div>
+            <div class="alert-sub">${hasAlert ? `${stats.notStartedCount} قائمة لم يبدأ العمل عليها بعد` : 'كل قوائمك القابلة للتتبع بدأت العمل عليها'}</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 style="margin-bottom:14px">📊 نظرة عامة</h2>
+          <div class="rings-grid">
+            <div>
+              ${renderDonutRing(stats.avg, 'var(--primary)')}
+              <div class="ring-label">متوسط الإنجاز</div>
+              <div class="ring-sub">عبر ${stats.trackable} قائمة</div>
+            </div>
+            <div>
+              ${renderDonutRing(stats.trackable ? Math.round(stats.doneCount / stats.trackable * 100) : 0, '#10b981')}
+              <div class="ring-label">مكتملة</div>
+              <div class="ring-sub">${stats.doneCount} من ${stats.trackable}</div>
+            </div>
+            <div>
+              ${renderDonutRing(stats.trackable ? Math.round(stats.inProgressCount / stats.trackable * 100) : 0, '#f59e0b')}
+              <div class="ring-label">قيد التنفيذ</div>
+              <div class="ring-sub">${stats.inProgressCount} من ${stats.trackable}</div>
+            </div>
+            <div>
+              ${renderDonutRing(stats.trackable ? Math.round(stats.notStartedCount / stats.trackable * 100) : 0, '#ef4444')}
+              <div class="ring-label">لم تبدأ</div>
+              <div class="ring-sub">${stats.notStartedCount} من ${stats.trackable}</div>
             </div>
           </div>
-          <button class="btn-secondary" style="padding:8px 12px;flex-shrink:0" title="تعديل الاسم" onclick="event.stopPropagation(); openEditWorksheetModal('${ws.id}')">✏️</button>
-          <button class="btn-danger" style="padding:8px 12px;flex-shrink:0" title="حذف ورقة العمل" onclick="event.stopPropagation(); deleteWorksheet('${ws.id}')">🗑️</button>
+        </div>
+      `;
+    } else {
+      html += `
+        <div class="card">
+          <div class="empty-state">
+            <div class="icon">📊</div>
+            <p>لا توجد إحصائيات بعد.</p>
+            <p>أضف قوائم مهام أو عادات/عبادات قابلة للتتبع لتظهر هنا.</p>
+          </div>
+        </div>
+      `;
+    }
+  } else {
+    const showNotifBanner = IS_NATIVE ? !nativeNotificationsGranted : ('Notification' in window && Notification.permission === 'default');
+    if (showNotifBanner) {
+      html += `
+        <div class="card" style="background:var(--primary-tint-1);border:1px solid var(--primary-border)">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+            <div>
+              <div style="font-weight:700">🔔 فعّل إشعارات التذكير</div>
+              <div class="hint">اسمح للتطبيق بإرسال إشعارات حتى تصلك تذكيرات المهام والعادات في وقتها.</div>
+            </div>
+            <button class="btn-primary" onclick="requestNotificationPermission()">تفعيل</button>
+          </div>
+        </div>
+      `;
+    }
+
+    const filteredWorksheets = data.worksheets.filter(ws => !searchQuery || ws.name.toLowerCase().includes(searchQuery));
+
+    if (!data.worksheets.length) {
+      html += `
+        <div class="card">
+          <div class="empty-state">
+            <div class="icon">🗂️</div>
+            <p>لا توجد أوراق عمل بعد.</p>
+            <p>أنشئ أول ورقة عمل لتبدأ بإضافة قوائمك (مثل: عملي، عائلتي، شخصي).</p>
+            <br>
+            <button class="btn-primary" onclick="openNewWorksheetModal()">+ إنشاء ورقة عمل</button>
+          </div>
         </div>`;
-    });
-    html += `</div>`;
+    } else if (!filteredWorksheets.length) {
+      html += `
+        <div class="card">
+          <div class="empty-state">
+            <div class="icon">🔎</div>
+            <p>لا توجد نتائج مطابقة لـ "${escapeHtml(searchQuery)}"</p>
+          </div>
+        </div>`;
+    } else {
+      html += `<div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <h2 style="margin:0">اختر ورقة عمل</h2>
+          <button class="btn-primary" onclick="openNewWorksheetModal()">+ ورقة جديدة</button>
+        </div>`;
+      filteredWorksheets.forEach(ws => {
+        const count = (ws.lists || []).length;
+        html += `
+          <div class="list-item">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex:1;gap:10px;cursor:pointer" onclick="openWorksheet('${ws.id}')">
+              <div class="list-info">
+                <div class="list-icon">🗂️</div>
+                <div>
+                  <div class="list-name">${escapeHtml(ws.name)}</div>
+                  <div class="list-count">${count} قائمة</div>
+                </div>
+              </div>
+            </div>
+            <button class="btn-secondary" style="padding:8px 12px;flex-shrink:0" title="تعديل الاسم" onclick="event.stopPropagation(); openEditWorksheetModal('${ws.id}')">✏️</button>
+            <button class="btn-danger" style="padding:8px 12px;flex-shrink:0" title="حذف ورقة العمل" onclick="event.stopPropagation(); deleteWorksheet('${ws.id}')">🗑️</button>
+          </div>`;
+      });
+      html += `</div>`;
+    }
   }
+
   app.innerHTML = html;
+  renderBottomTabBar();
 }
 
 function renderListsView(app) {
