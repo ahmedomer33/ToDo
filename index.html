@@ -497,31 +497,35 @@
   .widget-ring { display: flex; justify-content: center; margin: 4px 0; }
   .widget-line { font-size: 12.5px; color: #4b5563; text-align: center; line-height: 1.6; }
 
-  /* Bottom tab bar — persistent across all screens. Floating dark pill with an
-     animated "wave" indicator (a soft glowing hump) that slides beneath the
-     active tab, sliding from one tab to another with a smooth transition. */
-  body.has-bottom-tabs { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+  /* Bottom tab bar — persistent across all screens, calm styling matching the
+     rest of the app (white pill, purple accent). An animated "wave" indicator
+     (a soft glowing hump in the app's primary color) slides beneath whichever
+     tab is active. Uses inset-inline-start (not left/right) so it lands on the
+     correct tab regardless of the page's direction — this page is dir="rtl",
+     where flex items lay out right-to-left. */
+  body.has-bottom-tabs { padding-bottom: calc(94px + env(safe-area-inset-bottom, 0px)); }
   .bottom-tab-bar {
     position: fixed;
     bottom: calc(14px + env(safe-area-inset-bottom, 0px));
     left: 14px;
     right: 14px;
     display: flex;
-    background: linear-gradient(180deg, #241a30, #171019);
-    border-radius: 30px;
-    box-shadow: 0 12px 28px rgba(20,10,30,0.35), 0 2px 6px rgba(0,0,0,0.15);
-    padding: 9px 6px;
+    background: #fff;
+    border-radius: 28px;
+    box-shadow: 0 8px 24px rgba(62,42,99,0.14), 0 2px 6px rgba(31,41,55,0.06);
+    border: 1px solid var(--primary-border);
+    padding: 8px 6px;
     z-index: 500;
     overflow: visible;
   }
   .tab-hump {
     position: absolute;
-    top: -17px;
-    height: 40px;
-    left: 0;
+    top: -13px;
+    height: 32px;
+    inset-inline-start: 0;
     pointer-events: none;
     z-index: 1;
-    transition: left 0.42s cubic-bezier(0.34, 1.25, 0.4, 1);
+    transition: inset-inline-start 0.42s cubic-bezier(0.34, 1.25, 0.4, 1);
   }
   .tab-hump-svg { width: 100%; height: 100%; display: block; overflow: visible; }
   .tab-btn {
@@ -535,12 +539,12 @@
     background: none;
     padding: 6px 4px;
     border-radius: 14px;
-    color: rgba(255,255,255,0.5);
+    color: #9CA3AF;
     transform: none;
     transition: color 0.3s ease;
   }
-  .tab-btn:hover { background: rgba(255,255,255,0.06); transform: none; }
-  .tab-btn.active { color: #E9DFFC; }
+  .tab-btn:hover { background: var(--primary-tint-3); transform: none; }
+  .tab-btn.active { color: var(--primary); }
   .tab-icon { font-size: 19px; line-height: 1; transition: transform 0.3s ease; }
   .tab-btn.active .tab-icon { transform: translateY(-1px); }
   .tab-label { font-size: 10.5px; font-weight: 700; }
@@ -3063,12 +3067,12 @@ function renderBottomTabBar() {
     <svg class="tab-hump-svg" viewBox="0 0 100 40" preserveAspectRatio="none">
       <defs>
         <linearGradient id="tabHumpGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#B79CF2"/>
+          <stop offset="0%" stop-color="#8B6FCE"/>
           <stop offset="100%" stop-color="#6C4BA6"/>
         </linearGradient>
       </defs>
-      <path d="M0,40 C18,40 24,4 50,4 C76,4 82,40 100,40 L100,40 L0,40 Z" fill="url(#tabHumpGrad)" opacity="0.15"/>
-      <path d="M0,40 C18,40 24,4 50,4 C76,4 82,40 100,40" fill="none" stroke="url(#tabHumpGrad)" stroke-width="3" stroke-linecap="round"/>
+      <path d="M0,40 C18,40 24,6 50,6 C76,6 82,40 100,40 L100,40 L0,40 Z" fill="url(#tabHumpGrad)" opacity="0.12"/>
+      <path d="M0,40 C18,40 24,6 50,6 C76,6 82,40 100,40" fill="none" stroke="url(#tabHumpGrad)" stroke-width="3" stroke-linecap="round"/>
     </svg>
   `;
 
@@ -3087,12 +3091,12 @@ function renderBottomTabBar() {
     const startPct = _tabHumpLeftPct === null ? humpTargetPct : _tabHumpLeftPct;
     // 1) Place the (brand-new) hump element at its OLD position instantly...
     humpEl.style.transition = 'none';
-    humpEl.style.left = startPct + '%';
+    humpEl.style.insetInlineStart = startPct + '%';
     humpEl.getBoundingClientRect(); // force layout so the browser registers the start position
     // 2) ...then, next frame, animate it to the new position.
     requestAnimationFrame(() => {
       humpEl.style.transition = '';
-      humpEl.style.left = humpTargetPct + '%';
+      humpEl.style.insetInlineStart = humpTargetPct + '%';
     });
     _tabHumpLeftPct = humpTargetPct;
   }
