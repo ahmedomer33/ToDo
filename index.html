@@ -1222,9 +1222,27 @@
       <label>اسم ورقة العمل</label>
       <input type="text" id="worksheetName" placeholder="مثال: عملي، عائلتي، شخصي">
     </div>
+    <div class="modal-actions" id="worksheetTemplateActions" style="justify-content:flex-start">
+      <button type="button" class="btn-secondary" onclick="openTemplatesModal()">🧩 أو ابدأ من قالب جاهز</button>
+    </div>
     <div class="modal-actions">
       <button class="btn-secondary" onclick="closeModal('worksheetModal')">إلغاء</button>
       <button class="btn-primary" onclick="saveWorksheet()">حفظ</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Ready-made templates -->
+<div class="modal-overlay" id="templatesModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">🧩 قوالب جاهزة</div>
+      <button class="close-btn" onclick="closeModal('templatesModal')">×</button>
+    </div>
+    <p class="hint" style="margin-bottom:12px">اختر قالبًا فيضيفه التطبيق جاهزًا بقوائمه وخاناته، وتقدر تعدّل فيه بعد كده زي أي ورقة عمل عادية.</p>
+    <div class="type-selector" id="templatesList"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('templatesModal'); openNewWorksheetModal();">رجوع</button>
     </div>
   </div>
 </div>
@@ -1914,6 +1932,22 @@ function markOnboardingSeen() {
 // script) instead of a separate internal counter, so both stay in sync.
 const WHATSNEW_SEEN_KEY = 'todoAppWhatsNewSeenVersion';
 const CHANGELOG = [
+  {
+    version: 'V10.09.26',
+    title: 'قوالب جاهزة لإنشاء ورقة عمل بضغطة واحدة',
+    items: [
+      'عند إنشاء ورقة عمل جديدة، أصبح فيه خيار "ابدأ من قالب جاهز"',
+      'أُضيفت 4 قوالب: متابعة مصروفات، وردية قرآن، متابعة مذاكرة، وجدول رياضة — كل قالب بيضيف القوائم والخانات جاهزة تلقائيًا'
+    ]
+  },
+  {
+    version: 'V09.09.26',
+    title: 'قائمة تنبيهات جديدة وإعدادات للويدجت',
+    items: [
+      'أُضيفت قائمة مخصّصة للتنبيهات',
+      'أُضيفت إعدادات للويدجت لتحديد الخانة اللي تظهر فيه'
+    ]
+  },
   {
     version: 'V08.09.26',
     title: 'قائمة جانبية أبسط ومتناسقة مع باقي التطبيق',
@@ -4603,8 +4637,10 @@ function goBackToWorksheets() {
 
 function openNewWorksheetModal() {
   editingWorksheetId = null;
+  pendingTemplateId = null;
   document.getElementById('worksheetModalTitle').textContent = 'ورقة عمل جديدة';
   document.getElementById('worksheetName').value = '';
+  document.getElementById('worksheetTemplateActions').style.display = 'flex';
   openModal('worksheetModal');
 }
 
@@ -4612,9 +4648,126 @@ function openEditWorksheetModal(id) {
   const ws = data.worksheets.find(w => w.id === id);
   if (!ws) return;
   editingWorksheetId = id;
+  pendingTemplateId = null;
   document.getElementById('worksheetModalTitle').textContent = 'تعديل اسم ورقة العمل';
   document.getElementById('worksheetName').value = ws.name;
+  document.getElementById('worksheetTemplateActions').style.display = 'none';
   openModal('worksheetModal');
+}
+
+// ---- Ready-made templates ----
+let pendingTemplateId = null;
+
+const WORKSHEET_TEMPLATES = [
+  {
+    id: 'expenses',
+    icon: '💰',
+    title: 'متابعة مصروفات',
+    description: 'خانة تراكمية تجمع مصروفاتك تلقائيًا مع كل إدخال',
+    worksheetName: 'مصروفاتي',
+    lists: [
+      {
+        name: 'المصروفات', icon: '💰', type: 'formulas',
+        fields: [ { name: 'الإجمالي', type: 'accumulate', operation: 'add', startValue: 0 } ]
+      }
+    ]
+  },
+  {
+    id: 'quran',
+    icon: '📖',
+    title: 'وردية قرآن',
+    description: 'متابعة يومية لقراءة الورد وعدد الصفحات',
+    worksheetName: 'ورديتي',
+    lists: [
+      {
+        name: 'وردية القرآن', icon: '📖', type: 'habits',
+        habitTasks: [
+          { name: 'قراءة الورد', icon: '📖', inputType: 'checkbox' },
+          { name: 'عدد الصفحات', icon: '🔢', inputType: 'number' }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'study',
+    icon: '📚',
+    title: 'متابعة مذاكرة',
+    description: 'إجمالي ساعات المذاكرة يتحدّث تلقائيًا مع كل إدخال',
+    worksheetName: 'مذاكرتي',
+    lists: [
+      {
+        name: 'ساعات المذاكرة', icon: '📚', type: 'formulas',
+        fields: [ { name: 'إجمالي الساعات', type: 'accumulate', operation: 'add', startValue: 0 } ]
+      }
+    ]
+  },
+  {
+    id: 'sport',
+    icon: '🏋️',
+    title: 'جدول رياضة',
+    description: 'أيام تمرين تُتابع يوميًا، مع خانة تراكمية للأوزان',
+    worksheetName: 'رياضتي',
+    lists: [
+      {
+        name: 'أيام التمرين', icon: '🏋️', type: 'habits',
+        habitTasks: [ { name: 'تمرين اليوم', icon: '✅', inputType: 'checkbox' } ]
+      },
+      {
+        name: 'الأوزان', icon: '🏋️', type: 'formulas',
+        fields: [ { name: 'إجمالي الأوزان', type: 'accumulate', operation: 'add', startValue: 0 } ]
+      }
+    ]
+  }
+];
+
+function openTemplatesModal() {
+  closeModal('worksheetModal');
+  const container = document.getElementById('templatesList');
+  container.innerHTML = WORKSHEET_TEMPLATES.map(t => `
+    <div class="type-option" onclick="applyTemplate('${t.id}')">
+      <div style="font-size:26px">${t.icon}</div>
+      <div style="font-weight:700">${escapeHtml(t.title)}</div>
+      <div class="hint">${escapeHtml(t.description)}</div>
+    </div>
+  `).join('');
+  openModal('templatesModal');
+}
+
+function applyTemplate(templateId) {
+  const tpl = WORKSHEET_TEMPLATES.find(t => t.id === templateId);
+  if (!tpl) return;
+  pendingTemplateId = templateId;
+  closeModal('templatesModal');
+  editingWorksheetId = null;
+  document.getElementById('worksheetModalTitle').textContent = 'ورقة عمل جديدة (' + tpl.title + ')';
+  document.getElementById('worksheetName').value = tpl.worksheetName;
+  document.getElementById('worksheetTemplateActions').style.display = 'none';
+  openModal('worksheetModal');
+}
+
+function buildListFromTemplate(tplList) {
+  if (tplList.type === 'formulas') {
+    return {
+      id: uid(), name: tplList.name, icon: tplList.icon, type: 'formulas',
+      fields: (tplList.fields || []).map(f => ({ id: uid(), ...f })),
+      entries: []
+    };
+  }
+  if (tplList.type === 'habits') {
+    return {
+      id: uid(), name: tplList.name, icon: tplList.icon, type: 'habits',
+      habitTasks: (tplList.habitTasks || []).map(t => ({ id: uid(), ...t })),
+      habitDays: {}
+    };
+  }
+  if (tplList.type === 'notes') {
+    return { id: uid(), name: tplList.name, icon: tplList.icon, type: 'notes', notes: [] };
+  }
+  return {
+    id: uid(), name: tplList.name, icon: tplList.icon, type: 'todo',
+    tasks: (tplList.tasks || []).map(t => ({ id: uid(), ...t })),
+    months: {}
+  };
 }
 
 function saveWorksheet() {
@@ -4624,8 +4777,14 @@ function saveWorksheet() {
     const ws = data.worksheets.find(w => w.id === editingWorksheetId);
     ws.name = name;
   } else {
-    data.worksheets.push({ id: uid(), name, lists: [] });
+    const newWs = { id: uid(), name, lists: [] };
+    if (pendingTemplateId) {
+      const tpl = WORKSHEET_TEMPLATES.find(t => t.id === pendingTemplateId);
+      if (tpl) newWs.lists = tpl.lists.map(buildListFromTemplate);
+    }
+    data.worksheets.push(newWs);
   }
+  pendingTemplateId = null;
   save();
   closeModal('worksheetModal');
   render();
@@ -5851,7 +6010,7 @@ setInterval(checkReminders, 20000);
 // ============ Init ============
 // Single source of truth for the version shown on the splash screen — keep in
 // sync with the "version" field in package.json when it's bumped.
-const APP_VERSION = 'V08.09.26';
+const APP_VERSION = 'V10.09.26';
 
 function hideSplashScreen() {
   const el = document.getElementById('splashScreen');
