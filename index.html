@@ -1933,6 +1933,15 @@ function markOnboardingSeen() {
 const WHATSNEW_SEEN_KEY = 'todoAppWhatsNewSeenVersion';
 const CHANGELOG = [
   {
+    version: 'V11.09.26',
+    title: 'تحليلات ورسوم بيانية لقوائم المعادلات',
+    items: [
+      'زر جديد 📊 أعلى أي قائمة "جدول معادلات" يفتح شاشة تحليلات لكل خانة فيها',
+      'رسم بياني يوضح تطور القيمة عبر الوقت، مع ملخص سريع (آخر قيمة، المتوسط، أعلى وأقل قيمة)',
+      'فلاتر: آخر أسبوع، آخر شهر، أو كل الفترة'
+    ]
+  },
+  {
     version: 'V10.09.26',
     title: 'قوالب جاهزة لإنشاء قائمة بضغطة واحدة',
     items: [
@@ -2805,6 +2814,7 @@ function render() {
   if (appScreen === 'settings') { renderSettingsView(app); renderBottomTabBar(); return; }
   if (appScreen === 'admin') { renderAdminView(app); renderBottomTabBar(); return; }
   if (appScreen === 'reminders') { renderRemindersView(app); renderBottomTabBar(); return; }
+  if (appScreen === 'analytics') { renderAnalyticsView(app); renderBottomTabBar(); return; }
   if (!currentWorksheetId) {
     renderWorksheetsView(app);
   } else if (!currentListId) {
@@ -3430,6 +3440,7 @@ function goHomeTab(tab) {
 // open — used both to decide what handleCenterCreate() should do, and to
 // grey out the center button when there's nothing to add here.
 function centerCreateAvailable() {
+  if (appScreen === 'analytics') return false; // analytics is a view-only screen
   if (currentWorksheetId && currentListId) return true; // inside a list: always has an add action
   if (currentWorksheetId && !currentListId) return true; // inside a worksheet's lists
   if (appScreen === null && !currentWorksheetId && homeTab === 'main') return true; // worksheets home tab
@@ -3439,6 +3450,7 @@ function centerCreateAvailable() {
 // The center "+" button acts on whatever screen the person is currently
 // looking at, instead of navigating anywhere itself.
 function handleCenterCreate() {
+  if (appScreen === 'analytics') return;
   if (currentWorksheetId && currentListId) {
     const list = (data.lists || []).find(l => l.id === currentListId);
     if (!list) return;
@@ -3739,6 +3751,7 @@ function renderDetailView(app) {
       <button class="icon-btn" onclick="goBack()" title="العودة">→</button>
       <div class="page-header-icon">${list.icon}</div>
       <h1>${escapeHtml(list.name)}</h1>
+      ${list.type === 'formulas' ? `<button class="icon-btn" style="margin-inline-start:auto" onclick="openAnalyticsScreen('${list.id}')" title="التحليلات">📊</button>` : ''}
     </div>
   `;
 
@@ -4293,6 +4306,181 @@ function renderAccumulateTable(list) {
       <p class="hint" style="margin-top:8px">اكتب الرقم واضغط Enter لإضافة صف جديد والانتقال إليه مباشرة — أسرع لتسجيل إدخالات متتالية.</p>
     </div>
   `;
+}
+
+// ---- Analytics (charts) for formulas lists ----
+let analyticsRange = 'all'; // 'week' | 'month' | 'all'
+let analyticsChartInstances = {};
+
+function openAnalyticsScreen(listId) {
+  currentListId = listId;
+  analyticsRange = 'all';
+  appScreen = 'analytics';
+  render();
+}
+
+function closeAnalyticsScreen() {
+  appScreen = null;
+  render();
+}
+
+function setAnalyticsRange(range) {
+  analyticsRange = range;
+  render();
+}
+
+function loadChartJs(callback) {
+  if (window.Chart) { callback(); return; }
+  const script = document.createElement('script');
+  script.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js';
+  script.onload = callback;
+  script.onerror = () => alert('تعذّر تحميل أداة الرسم البياني. تأكد من اتصالك بالإنترنت وحاول مجددًا.');
+  document.head.appendChild(script);
+}
+
+function formatAnalyticsDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleDateString('ar-EG', { day: 'numeric', month: 'short' });
+}
+
+function formatAnalyticsNum(n) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  return String(Math.round(n * 100) / 100);
+}
+
+// Raw (unfiltered) per-entry value for one field, paired with its entry —
+// accumulate fields use the running total, formula fields use the entry's
+// own computed result. Order matches list.entries (chronological/manual).
+function getFieldSeries(list, field) {
+  const entries = list.entries || [];
+  if (field.type === 'accumulate') {
+    const seriesByField = computeAccumulateSeries(list);
+    const arr = seriesByField[field.id] || [];
+    return entries.map((e, i) => ({ entry: e, value: arr[i] }));
+  }
+  return entries.map(e => {
+    const x = Number(e.inputValue);
+    const val = isNaN(x) ? null : evaluateFormula(field.formula, x);
+    return { entry: e, value: val };
+  });
+}
+
+function filterSeriesByRange(series) {
+  let filtered = series;
+  if (analyticsRange !== 'all') {
+    const days = analyticsRange === 'week' ? 7 : 30;
+    const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+    filtered = filtered.filter(p => p.entry.createdAt && new Date(p.entry.createdAt).getTime() >= cutoff);
+  }
+  return filtered.filter(p => p.value !== null && p.value !== undefined && !isNaN(p.value));
+}
+
+function renderAnalyticsView(app) {
+  const list = data.lists.find(l => l.id === currentListId);
+  if (!list) { appScreen = null; render(); return; }
+  const fields = list.fields || [];
+  const entries = list.entries || [];
+
+  let html = `
+    <div class="page-header">
+      <button class="icon-btn" onclick="closeAnalyticsScreen()" title="العودة">→</button>
+      <div class="page-header-icon">📊</div>
+      <h1>تحليلات: ${escapeHtml(list.name)}</h1>
+    </div>
+  `;
+
+  if (fields.length === 0 || entries.length === 0) {
+    html += `
+      <div class="card">
+        <div class="empty-state">
+          <div class="icon">📊</div>
+          <p>${fields.length === 0 ? 'أضف خانة أولًا لعرض تحليلاتها.' : 'لا توجد إدخالات بعد لعرض تحليل عليها.'}</p>
+        </div>
+      </div>
+    `;
+    app.innerHTML = html;
+    return;
+  }
+
+  const rangeBtn = (key, label) => `<button class="btn-secondary" style="${analyticsRange === key ? 'background:var(--primary);color:#fff;border-color:var(--primary)' : ''}" onclick="setAnalyticsRange('${key}')">${label}</button>`;
+  html += `
+    <div class="card" style="margin-bottom:14px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${rangeBtn('week', 'آخر أسبوع')}
+        ${rangeBtn('month', 'آخر شهر')}
+        ${rangeBtn('all', 'كل الفترة')}
+      </div>
+    </div>
+  `;
+
+  fields.forEach(f => { html += renderFieldAnalyticsCard(list, f); });
+
+  app.innerHTML = html;
+  loadChartJs(() => { fields.forEach(f => drawFieldChart(list, f)); });
+}
+
+function renderFieldAnalyticsCard(list, field) {
+  const series = filterSeriesByRange(getFieldSeries(list, field));
+  const values = series.map(p => p.value);
+  const canvasId = 'chart-' + field.id;
+  let statsHtml = '';
+  if (values.length) {
+    const max = Math.max(...values);
+    const min = Math.min(...values);
+    const avg = values.reduce((a, b) => a + b, 0) / values.length;
+    const latest = values[values.length - 1];
+    statsHtml = `
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px">
+        <div><span class="hint">آخر قيمة</span><div style="font-weight:800">${formatAnalyticsNum(latest)}</div></div>
+        <div><span class="hint">المتوسط</span><div style="font-weight:800">${formatAnalyticsNum(avg)}</div></div>
+        <div><span class="hint">أعلى قيمة</span><div style="font-weight:800">${formatAnalyticsNum(max)}</div></div>
+        <div><span class="hint">أقل قيمة</span><div style="font-weight:800">${formatAnalyticsNum(min)}</div></div>
+      </div>
+    `;
+  }
+  return `
+    <div class="card" style="margin-bottom:14px">
+      <h2 style="margin:0 0 10px">${field.type === 'accumulate' ? '🔁' : '🔣'} ${escapeHtml(field.name)}</h2>
+      ${statsHtml}
+      ${values.length
+        ? `<div style="position:relative;height:220px"><canvas id="${canvasId}"></canvas></div>`
+        : `<div class="empty-state"><div class="icon">📉</div><p>لا توجد بيانات كافية لهذه الفترة.</p></div>`}
+    </div>
+  `;
+}
+
+function drawFieldChart(list, field) {
+  const canvas = document.getElementById('chart-' + field.id);
+  if (!canvas || !window.Chart) return;
+  const series = filterSeriesByRange(getFieldSeries(list, field));
+  if (!series.length) return;
+  const labels = series.map(p => (p.entry.name && p.entry.name.trim()) ? p.entry.name : formatAnalyticsDate(p.entry.createdAt));
+  const values = series.map(p => p.value);
+  const themeColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#6C4BA6';
+  if (analyticsChartInstances[field.id]) { analyticsChartInstances[field.id].destroy(); }
+  analyticsChartInstances[field.id] = new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: field.name,
+        data: values,
+        borderColor: themeColor,
+        backgroundColor: themeColor + '20',
+        tension: 0.3,
+        fill: true,
+        pointRadius: 3,
+        pointBackgroundColor: themeColor
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { x: { ticks: { maxRotation: 0, autoSkip: true } } }
+    }
+  });
 }
 
 function renderField(field, idx, total) {
@@ -6013,7 +6201,7 @@ setInterval(checkReminders, 20000);
 // ============ Init ============
 // Single source of truth for the version shown on the splash screen — keep in
 // sync with the "version" field in package.json when it's bumped.
-const APP_VERSION = 'V10.09.26';
+const APP_VERSION = 'V11.09.26';
 
 function hideSplashScreen() {
   const el = document.getElementById('splashScreen');
