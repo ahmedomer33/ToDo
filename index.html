@@ -121,20 +121,25 @@
   .form-group label { display: block; margin-bottom: 6px; font-weight: 600; color: #555; }
 
   /* Lists */
+  /* List rows (worksheets list & lists-inside-a-worksheet). Two-row layout:
+     a main row that always keeps the icon tight against the name (fixing the
+     old layout where too many inline elements at narrow widths pushed the
+     name onto its own centered line, away from the icon) and a slim actions
+     row underneath for reorder/pin/delete, separated by a divider. */
   .list-item {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
+    flex-direction: column;
+    gap: 8px;
     padding: 12px 14px;
     background: #fff;
     border-radius: 16px;
     margin-bottom: 10px;
-    cursor: pointer;
     transition: all 0.2s;
     border: 1px solid rgba(31,41,55,0.06);
   }
   .list-item:hover { border-color: var(--primary-border-hover); box-shadow: 0 2px 10px rgba(31,41,55,0.06); }
-  .list-info { display: flex; align-items: center; gap: 12px; }
+  .list-item-main { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+  .list-info { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
   .list-icon {
     font-size: 22px;
     width: 46px;
@@ -145,6 +150,7 @@
     justify-content: center;
     background: var(--accent-indigo-tint);
     border-radius: 13px;
+    flex-shrink: 0;
   }
   /* Rotating color set for icon chips, applied cyclically in JS via colorClass() */
   .list-icon.c0, .widget-icon.c0 { background: var(--accent-coral-tint); }
@@ -152,8 +158,12 @@
   .list-icon.c2, .widget-icon.c2 { background: var(--accent-teal-tint); }
   .list-icon.c3, .widget-icon.c3 { background: var(--accent-indigo-tint); }
   .list-icon.c4, .widget-icon.c4 { background: var(--accent-blue-tint); }
-  .list-name { font-weight: 700; font-size: 15px; color: var(--primary-text); }
-  .list-count { color: #6b7280; font-size: 13px; margin-top: 2px; }
+  .list-text { min-width: 0; flex: 1; }
+  .list-name { font-weight: 700; font-size: 15px; color: var(--primary-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .list-count { color: #6b7280; font-size: 13px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .list-badge-wrap { flex-shrink: 0; }
+  .list-item-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 8px; border-top: 1px solid rgba(31,41,55,0.06); }
+  .list-item-actions-right { display: flex; align-items: center; gap: 6px; }
 
   /* Month view */
   .month-header {
@@ -460,17 +470,17 @@
   /* Home-screen widgets */
   .widgets-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
     gap: 12px;
   }
   .widget-card {
     background: #fff;
     border: 1px solid rgba(31,41,55,0.06);
     border-radius: 16px;
-    padding: 10px 12px 14px;
+    padding: 10px 12px 12px;
     position: relative;
   }
-  .widget-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
+  .widget-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
   .widget-reorder { display: flex; gap: 4px; }
   .widget-reorder .reorder-btn { padding: 2px 6px; font-size: 10px; }
   .widget-unpin {
@@ -482,20 +492,28 @@
     border-radius: 6px;
   }
   .widget-unpin:hover { background: #fee2e2; color: #ef4444; }
+  /* Horizontal row instead of a centered stack: icon, then name/worksheet
+     (which take up the remaining space and truncate instead of wrapping),
+     then the ring/figure hugging the far end — so a full-width card doesn't
+     leave big empty margins on both sides of centered text. */
+  .widget-card-body { display: flex; align-items: center; gap: 12px; cursor: pointer; }
   .widget-icon {
     font-size: 20px;
-    width: 38px;
-    height: 38px;
-    line-height: 38px;
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    line-height: 42px;
     text-align: center;
-    margin: 2px auto 6px;
-    border-radius: 11px;
+    border-radius: 12px;
     background: var(--accent-indigo-tint);
+    flex-shrink: 0;
   }
-  .widget-name { font-weight: 800; font-size: 14px; color: var(--primary-text); text-align: center; margin-top: 4px; }
-  .widget-worksheet { font-size: 11.5px; color: #9CA3AF; text-align: center; margin-bottom: 6px; }
-  .widget-ring { display: flex; justify-content: center; margin: 4px 0; }
-  .widget-line { font-size: 12.5px; color: #4b5563; text-align: center; line-height: 1.6; }
+  .widget-info { flex: 1; min-width: 0; }
+  .widget-name { font-weight: 800; font-size: 14px; color: var(--primary-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .widget-worksheet { font-size: 11.5px; color: #9CA3AF; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .widget-side { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .widget-ring { line-height: 0; }
+  .widget-line { font-size: 12.5px; color: #4b5563; text-align: center; line-height: 1.4; white-space: nowrap; }
 
   /* Bottom tab bar — persistent across all screens, calm styling matching the
      rest of the app (white pill, purple accent). The active tab's icon simply
@@ -2763,7 +2781,7 @@ function renderWidgetCard(listId, idx, total) {
   if (!loc) return '';
   const { list, worksheet } = loc;
   const s = computeWidgetSummary(list);
-  const ringHtml = (s.percent !== null && s.percent !== undefined) ? renderDonutRing(s.percent, 'var(--primary)', 60) : '';
+  const ringHtml = (s.percent !== null && s.percent !== undefined) ? renderDonutRing(s.percent, 'var(--primary)', 52) : '';
   const bodyHtml = s.lines
     ? s.lines.map(l => `<div class="widget-line">${escapeHtml(l)}</div>`).join('')
     : `<div class="widget-line">${s.badge !== undefined ? `<b>${escapeHtml(s.badge)}</b> ` : ''}${escapeHtml(s.line || '')}</div>`;
@@ -2776,12 +2794,15 @@ function renderWidgetCard(listId, idx, total) {
         </div>
         <button class="widget-unpin" title="إلغاء تثبيت هذا الويدجت" onclick="event.stopPropagation(); toggleWidgetPin('${list.id}')">✕</button>
       </div>
-      <div onclick="openPinnedWidget('${list.id}')" style="cursor:pointer">
+      <div class="widget-card-body" onclick="openPinnedWidget('${list.id}')">
         <div class="widget-icon ${colorClass(list.id)}">${list.icon}</div>
-        <div class="widget-name">${escapeHtml(list.name)}</div>
-        <div class="widget-worksheet">${escapeHtml(worksheet.name)}</div>
-        ${ringHtml ? `<div class="widget-ring">${ringHtml}</div>` : ''}
-        ${bodyHtml}
+        <div class="widget-info">
+          <div class="widget-name">${escapeHtml(list.name)}</div>
+          <div class="widget-worksheet">${escapeHtml(worksheet.name)}</div>
+        </div>
+        <div class="widget-side">
+          ${ringHtml ? `<div class="widget-ring">${ringHtml}</div>` : bodyHtml}
+        </div>
       </div>
     </div>
   `;
@@ -3220,17 +3241,21 @@ function renderWorksheetsView(app) {
         const count = (ws.lists || []).length;
         html += `
           <div class="list-item">
-            <div style="display:flex;align-items:center;justify-content:space-between;flex:1;gap:10px;cursor:pointer" onclick="openWorksheet('${ws.id}')">
+            <div class="list-item-main" onclick="openWorksheet('${ws.id}')">
               <div class="list-info">
                 <div class="list-icon ${colorClass(ws.id)}">🗂️</div>
-                <div>
+                <div class="list-text">
                   <div class="list-name">${escapeHtml(ws.name)}</div>
                   <div class="list-count">${count} قائمة</div>
                 </div>
               </div>
             </div>
-            <button class="btn-secondary" style="padding:8px 12px;flex-shrink:0" title="تعديل الاسم" onclick="event.stopPropagation(); openEditWorksheetModal('${ws.id}')">✏️</button>
-            <button class="btn-danger" style="padding:8px 12px;flex-shrink:0" title="حذف ورقة العمل" onclick="event.stopPropagation(); deleteWorksheet('${ws.id}')">🗑️</button>
+            <div class="list-item-actions" style="justify-content:flex-end">
+              <div class="list-item-actions-right">
+                <button class="btn-secondary" style="padding:6px 10px" title="تعديل الاسم" onclick="event.stopPropagation(); openEditWorksheetModal('${ws.id}')">✏️</button>
+                <button class="btn-danger" style="padding:6px 10px" title="حذف ورقة العمل" onclick="event.stopPropagation(); deleteWorksheet('${ws.id}')">🗑️</button>
+              </div>
+            </div>
           </div>`;
       });
       html += `</div>`;
@@ -3305,22 +3330,26 @@ function renderListsView(app) {
       }
       html += `
         <div class="list-item">
-          <div class="reorder-controls" onclick="event.stopPropagation()">
-            <button class="reorder-btn" onclick="moveList(${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>▲</button>
-            <button class="reorder-btn" onclick="moveList(${idx}, 1)" ${idx === data.lists.length - 1 ? 'disabled' : ''}>▼</button>
-          </div>
-          <div style="display:flex;align-items:center;justify-content:space-between;flex:1;gap:10px;cursor:pointer" onclick="openList('${list.id}')">
+          <div class="list-item-main" onclick="openList('${list.id}')">
             <div class="list-info">
               <div class="list-icon ${colorClass(list.id)}">${list.icon}</div>
-              <div>
+              <div class="list-text">
                 <div class="list-name">${escapeHtml(list.name)}</div>
                 <div class="list-count">${subtitle}</div>
               </div>
             </div>
-            ${badgeHtml}
+            <div class="list-badge-wrap">${badgeHtml}</div>
           </div>
-          <button class="btn-secondary" style="padding:8px 12px;flex-shrink:0" title="${isListPinned(list.id) ? 'إلغاء التثبيت كـ Widget' : 'تثبيت كـ Widget في الشاشة الرئيسية'}" onclick="event.stopPropagation(); toggleWidgetPin('${list.id}')">${isListPinned(list.id) ? '📌' : '📍'}</button>
-          <button class="btn-danger" style="padding:8px 12px;flex-shrink:0" title="حذف القائمة" onclick="event.stopPropagation(); deleteList('${list.id}')">🗑️</button>
+          <div class="list-item-actions">
+            <div class="reorder-controls" onclick="event.stopPropagation()">
+              <button class="reorder-btn" onclick="moveList(${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>▲</button>
+              <button class="reorder-btn" onclick="moveList(${idx}, 1)" ${idx === data.lists.length - 1 ? 'disabled' : ''}>▼</button>
+            </div>
+            <div class="list-item-actions-right">
+              <button class="btn-secondary" style="padding:6px 10px" title="${isListPinned(list.id) ? 'إلغاء التثبيت كـ Widget' : 'تثبيت كـ Widget في الشاشة الرئيسية'}" onclick="event.stopPropagation(); toggleWidgetPin('${list.id}')">${isListPinned(list.id) ? '📌' : '📍'}</button>
+              <button class="btn-danger" style="padding:6px 10px" title="حذف القائمة" onclick="event.stopPropagation(); deleteList('${list.id}')">🗑️</button>
+            </div>
+          </div>
         </div>`;
     });
     html += `</div>`;
