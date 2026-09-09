@@ -1222,9 +1222,6 @@
       <label>اسم ورقة العمل</label>
       <input type="text" id="worksheetName" placeholder="مثال: عملي، عائلتي، شخصي">
     </div>
-    <div class="modal-actions" id="worksheetTemplateActions" style="justify-content:flex-start">
-      <button type="button" class="btn-secondary" onclick="openTemplatesModal()">🧩 أو ابدأ من قالب جاهز</button>
-    </div>
     <div class="modal-actions">
       <button class="btn-secondary" onclick="closeModal('worksheetModal')">إلغاء</button>
       <button class="btn-primary" onclick="saveWorksheet()">حفظ</button>
@@ -1232,17 +1229,17 @@
   </div>
 </div>
 
-<!-- Modal: Ready-made templates -->
+<!-- Modal: Ready-made list templates -->
 <div class="modal-overlay" id="templatesModal">
   <div class="modal">
     <div class="modal-header">
-      <div class="modal-title">🧩 قوالب جاهزة</div>
+      <div class="modal-title">🧩 قوالب قوائم جاهزة</div>
       <button class="close-btn" onclick="closeModal('templatesModal')">×</button>
     </div>
-    <p class="hint" style="margin-bottom:12px">اختر قالبًا فيضيفه التطبيق جاهزًا بقوائمه وخاناته، وتقدر تعدّل فيه بعد كده زي أي ورقة عمل عادية.</p>
+    <p class="hint" style="margin-bottom:12px">اختر قالبًا فتُضاف القائمة جاهزة بخاناتها/مهامها داخل ورقة العمل الحالية، وتقدر تعدّل فيها بعد كده زي أي قائمة عادية.</p>
     <div class="type-selector" id="templatesList"></div>
     <div class="modal-actions">
-      <button class="btn-secondary" onclick="closeModal('templatesModal'); openNewWorksheetModal();">رجوع</button>
+      <button class="btn-secondary" onclick="closeModal('templatesModal'); openNewListModal();">رجوع</button>
     </div>
   </div>
 </div>
@@ -1283,6 +1280,9 @@
         </div>
       </div>
       <p class="hint" id="typeLockedHint" style="display:none">🔒 لا يمكن تغيير نوع القائمة بعد إنشائها</p>
+    </div>
+    <div class="form-group" id="listTemplateActions">
+      <button type="button" class="btn-secondary" onclick="openListTemplatesModal()">🧩 أو اختر من القوالب الجاهزة</button>
     </div>
     <div class="form-group" id="habitRangeGroup" style="display:none">
       <label>الفترة الزمنية للتتبع (اختياري)</label>
@@ -1934,10 +1934,10 @@ const WHATSNEW_SEEN_KEY = 'todoAppWhatsNewSeenVersion';
 const CHANGELOG = [
   {
     version: 'V10.09.26',
-    title: 'قوالب جاهزة لإنشاء ورقة عمل بضغطة واحدة',
+    title: 'قوالب جاهزة لإنشاء قائمة بضغطة واحدة',
     items: [
-      'عند إنشاء ورقة عمل جديدة، أصبح فيه خيار "ابدأ من قالب جاهز"',
-      'أُضيفت 4 قوالب: متابعة مصروفات، وردية قرآن، متابعة مذاكرة، وجدول رياضة — كل قالب بيضيف القوائم والخانات جاهزة تلقائيًا'
+      'عند إنشاء قائمة جديدة داخل أي ورقة عمل، أصبح فيه خيار "اختر من القوالب الجاهزة"',
+      'أُضيفت 7 قوالب: الصلوات الخمس، الورد القرآني، متابعة المصروفات، ساعات المذاكرة، روتين رياضي، روتين الصباح، ومتابعة الوزن — كل قالب بيضيف المهام/الخانات المناسبة جاهزة تلقائيًا'
     ]
   },
   {
@@ -4637,10 +4637,8 @@ function goBackToWorksheets() {
 
 function openNewWorksheetModal() {
   editingWorksheetId = null;
-  pendingTemplateId = null;
   document.getElementById('worksheetModalTitle').textContent = 'ورقة عمل جديدة';
   document.getElementById('worksheetName').value = '';
-  document.getElementById('worksheetTemplateActions').style.display = 'flex';
   openModal('worksheetModal');
 }
 
@@ -4648,126 +4646,9 @@ function openEditWorksheetModal(id) {
   const ws = data.worksheets.find(w => w.id === id);
   if (!ws) return;
   editingWorksheetId = id;
-  pendingTemplateId = null;
   document.getElementById('worksheetModalTitle').textContent = 'تعديل اسم ورقة العمل';
   document.getElementById('worksheetName').value = ws.name;
-  document.getElementById('worksheetTemplateActions').style.display = 'none';
   openModal('worksheetModal');
-}
-
-// ---- Ready-made templates ----
-let pendingTemplateId = null;
-
-const WORKSHEET_TEMPLATES = [
-  {
-    id: 'expenses',
-    icon: '💰',
-    title: 'متابعة مصروفات',
-    description: 'خانة تراكمية تجمع مصروفاتك تلقائيًا مع كل إدخال',
-    worksheetName: 'مصروفاتي',
-    lists: [
-      {
-        name: 'المصروفات', icon: '💰', type: 'formulas',
-        fields: [ { name: 'الإجمالي', type: 'accumulate', operation: 'add', startValue: 0 } ]
-      }
-    ]
-  },
-  {
-    id: 'quran',
-    icon: '📖',
-    title: 'وردية قرآن',
-    description: 'متابعة يومية لقراءة الورد وعدد الصفحات',
-    worksheetName: 'ورديتي',
-    lists: [
-      {
-        name: 'وردية القرآن', icon: '📖', type: 'habits',
-        habitTasks: [
-          { name: 'قراءة الورد', icon: '📖', inputType: 'checkbox' },
-          { name: 'عدد الصفحات', icon: '🔢', inputType: 'number' }
-        ]
-      }
-    ]
-  },
-  {
-    id: 'study',
-    icon: '📚',
-    title: 'متابعة مذاكرة',
-    description: 'إجمالي ساعات المذاكرة يتحدّث تلقائيًا مع كل إدخال',
-    worksheetName: 'مذاكرتي',
-    lists: [
-      {
-        name: 'ساعات المذاكرة', icon: '📚', type: 'formulas',
-        fields: [ { name: 'إجمالي الساعات', type: 'accumulate', operation: 'add', startValue: 0 } ]
-      }
-    ]
-  },
-  {
-    id: 'sport',
-    icon: '🏋️',
-    title: 'جدول رياضة',
-    description: 'أيام تمرين تُتابع يوميًا، مع خانة تراكمية للأوزان',
-    worksheetName: 'رياضتي',
-    lists: [
-      {
-        name: 'أيام التمرين', icon: '🏋️', type: 'habits',
-        habitTasks: [ { name: 'تمرين اليوم', icon: '✅', inputType: 'checkbox' } ]
-      },
-      {
-        name: 'الأوزان', icon: '🏋️', type: 'formulas',
-        fields: [ { name: 'إجمالي الأوزان', type: 'accumulate', operation: 'add', startValue: 0 } ]
-      }
-    ]
-  }
-];
-
-function openTemplatesModal() {
-  closeModal('worksheetModal');
-  const container = document.getElementById('templatesList');
-  container.innerHTML = WORKSHEET_TEMPLATES.map(t => `
-    <div class="type-option" onclick="applyTemplate('${t.id}')">
-      <div style="font-size:26px">${t.icon}</div>
-      <div style="font-weight:700">${escapeHtml(t.title)}</div>
-      <div class="hint">${escapeHtml(t.description)}</div>
-    </div>
-  `).join('');
-  openModal('templatesModal');
-}
-
-function applyTemplate(templateId) {
-  const tpl = WORKSHEET_TEMPLATES.find(t => t.id === templateId);
-  if (!tpl) return;
-  pendingTemplateId = templateId;
-  closeModal('templatesModal');
-  editingWorksheetId = null;
-  document.getElementById('worksheetModalTitle').textContent = 'ورقة عمل جديدة (' + tpl.title + ')';
-  document.getElementById('worksheetName').value = tpl.worksheetName;
-  document.getElementById('worksheetTemplateActions').style.display = 'none';
-  openModal('worksheetModal');
-}
-
-function buildListFromTemplate(tplList) {
-  if (tplList.type === 'formulas') {
-    return {
-      id: uid(), name: tplList.name, icon: tplList.icon, type: 'formulas',
-      fields: (tplList.fields || []).map(f => ({ id: uid(), ...f })),
-      entries: []
-    };
-  }
-  if (tplList.type === 'habits') {
-    return {
-      id: uid(), name: tplList.name, icon: tplList.icon, type: 'habits',
-      habitTasks: (tplList.habitTasks || []).map(t => ({ id: uid(), ...t })),
-      habitDays: {}
-    };
-  }
-  if (tplList.type === 'notes') {
-    return { id: uid(), name: tplList.name, icon: tplList.icon, type: 'notes', notes: [] };
-  }
-  return {
-    id: uid(), name: tplList.name, icon: tplList.icon, type: 'todo',
-    tasks: (tplList.tasks || []).map(t => ({ id: uid(), ...t })),
-    months: {}
-  };
 }
 
 function saveWorksheet() {
@@ -4777,14 +4658,8 @@ function saveWorksheet() {
     const ws = data.worksheets.find(w => w.id === editingWorksheetId);
     ws.name = name;
   } else {
-    const newWs = { id: uid(), name, lists: [] };
-    if (pendingTemplateId) {
-      const tpl = WORKSHEET_TEMPLATES.find(t => t.id === pendingTemplateId);
-      if (tpl) newWs.lists = tpl.lists.map(buildListFromTemplate);
-    }
-    data.worksheets.push(newWs);
+    data.worksheets.push({ id: uid(), name, lists: [] });
   }
-  pendingTemplateId = null;
   save();
   closeModal('worksheetModal');
   render();
@@ -5050,11 +4925,13 @@ function closeModal(id) { document.getElementById(id).classList.remove('active')
 // ---- List modal ----
 function openNewListModal() {
   editingListId = null;
+  pendingListTemplateId = null;
   selectedListIcon = '📋';
   document.getElementById('listModalTitle').textContent = 'قائمة جديدة';
   document.getElementById('listName').value = '';
   document.getElementById('habitStartDate').value = '';
   document.getElementById('habitEndDate').value = '';
+  document.getElementById('listTemplateActions').style.display = 'block';
   renderIconPicker('listIconPicker', ICONS, selectedListIcon, (icon) => { selectedListIcon = icon; });
   document.getElementById('typeOptionTodo').classList.remove('locked');
   document.getElementById('typeOptionNotes').classList.remove('locked');
@@ -5068,11 +4945,13 @@ function openNewListModal() {
 function openEditListModal(id) {
   const list = data.lists.find(l => l.id === id);
   editingListId = id;
+  pendingListTemplateId = null;
   selectedListIcon = list.icon;
   document.getElementById('listModalTitle').textContent = 'تعديل القائمة';
   document.getElementById('listName').value = list.name;
   document.getElementById('habitStartDate').value = list.habitStartDate || '';
   document.getElementById('habitEndDate').value = list.habitEndDate || '';
+  document.getElementById('listTemplateActions').style.display = 'none';
   renderIconPicker('listIconPicker', ICONS, selectedListIcon, (icon) => { selectedListIcon = icon; });
   document.getElementById('typeOptionTodo').classList.add('locked');
   document.getElementById('typeOptionNotes').classList.add('locked');
@@ -5083,10 +4962,127 @@ function openEditListModal(id) {
   openModal('listModal');
 }
 
+// ---- Ready-made list templates ----
+let pendingListTemplateId = null;
+
+const LIST_TEMPLATES = [
+  {
+    id: 'prayers',
+    icon: '🕌',
+    title: 'الصلوات الخمس',
+    description: 'متابعة يومية لأداء الصلوات الخمس',
+    name: 'الصلوات الخمس', listIcon: '🕌', type: 'habits',
+    habitTasks: [
+      { name: 'الفجر', icon: '🌙', inputType: 'checkbox' },
+      { name: 'الظهر', icon: '☀️', inputType: 'checkbox' },
+      { name: 'العصر', icon: '🌤️', inputType: 'checkbox' },
+      { name: 'المغرب', icon: '🌇', inputType: 'checkbox' },
+      { name: 'العشاء', icon: '🌌', inputType: 'checkbox' }
+    ]
+  },
+  {
+    id: 'quran',
+    icon: '📖',
+    title: 'الورد القرآني',
+    description: 'قراءة يومية، عدد صفحات، ومراجعة حفظ',
+    name: 'الورد القرآني', listIcon: '📖', type: 'habits',
+    habitTasks: [
+      { name: 'قراءة الورد', icon: '📖', inputType: 'checkbox' },
+      { name: 'عدد الصفحات', icon: '🔢', inputType: 'number' },
+      { name: 'مراجعة الحفظ', icon: '🔁', inputType: 'checkbox' }
+    ]
+  },
+  {
+    id: 'expenses',
+    icon: '💰',
+    title: 'متابعة المصروفات',
+    description: 'خانة تراكمية تجمع مصروفاتك تلقائيًا مع كل إدخال',
+    name: 'المصروفات', listIcon: '💰', type: 'formulas',
+    fields: [ { name: 'الإجمالي', type: 'accumulate', operation: 'add', startValue: 0 } ]
+  },
+  {
+    id: 'study',
+    icon: '📚',
+    title: 'ساعات المذاكرة',
+    description: 'إجمالي ساعات المذاكرة يتحدّث تلقائيًا مع كل إدخال',
+    name: 'ساعات المذاكرة', listIcon: '📚', type: 'formulas',
+    fields: [ { name: 'إجمالي الساعات', type: 'accumulate', operation: 'add', startValue: 0 } ]
+  },
+  {
+    id: 'sport',
+    icon: '🏋️',
+    title: 'روتين رياضي',
+    description: 'تمرين اليوم، مدة التمرين، وشرب الماء',
+    name: 'الروتين الرياضي', listIcon: '🏋️', type: 'habits',
+    habitTasks: [
+      { name: 'تمرين اليوم', icon: '✅', inputType: 'checkbox' },
+      { name: 'مدة التمرين (دقيقة)', icon: '⏱️', inputType: 'number' },
+      { name: 'أكواب الماء', icon: '💧', inputType: 'number' }
+    ]
+  },
+  {
+    id: 'morning',
+    icon: '🌅',
+    title: 'روتين الصباح',
+    description: 'مجموعة عادات صباحية جاهزة',
+    name: 'روتين الصباح', listIcon: '🌅', type: 'todo',
+    tasks: [
+      { name: 'الاستيقاظ بدري', icon: '⏰', inputType: 'checkbox' },
+      { name: 'شرب كوب ماء', icon: '💧', inputType: 'checkbox' },
+      { name: 'رياضة خفيفة', icon: '🏃', inputType: 'checkbox' },
+      { name: 'قراءة 10 دقائق', icon: '📚', inputType: 'checkbox' }
+    ]
+  },
+  {
+    id: 'weight',
+    icon: '⚖️',
+    title: 'متابعة الوزن',
+    description: 'سجّل قراءة الوزن أول بأول من غير تراكم',
+    name: 'الوزن', listIcon: '⚖️', type: 'formulas',
+    fields: [ { name: 'الوزن (كجم)', type: 'formula', formula: 'x' } ]
+  }
+];
+
+function openListTemplatesModal() {
+  closeModal('listModal');
+  const container = document.getElementById('templatesList');
+  container.innerHTML = LIST_TEMPLATES.map(t => `
+    <div class="type-option" onclick="applyListTemplate('${t.id}')">
+      <div style="font-size:26px">${t.icon}</div>
+      <div style="font-weight:700">${escapeHtml(t.title)}</div>
+      <div class="hint">${escapeHtml(t.description)}</div>
+    </div>
+  `).join('');
+  openModal('templatesModal');
+}
+
+function applyListTemplate(templateId) {
+  const tpl = LIST_TEMPLATES.find(t => t.id === templateId);
+  if (!tpl) return;
+  pendingListTemplateId = templateId;
+  closeModal('templatesModal');
+  editingListId = null;
+  selectedListIcon = tpl.listIcon;
+  document.getElementById('listModalTitle').textContent = 'قائمة جديدة (' + tpl.title + ')';
+  document.getElementById('listName').value = tpl.name;
+  document.getElementById('habitStartDate').value = '';
+  document.getElementById('habitEndDate').value = '';
+  document.getElementById('listTemplateActions').style.display = 'none';
+  renderIconPicker('listIconPicker', ICONS, selectedListIcon, (icon) => { selectedListIcon = icon; });
+  document.getElementById('typeOptionTodo').classList.add('locked');
+  document.getElementById('typeOptionNotes').classList.add('locked');
+  document.getElementById('typeOptionFormulas').classList.add('locked');
+  document.getElementById('typeOptionHabits').classList.add('locked');
+  document.getElementById('typeLockedHint').style.display = 'block';
+  markSelectedType(tpl.type);
+  openModal('listModal');
+}
+
 function selectListType(type) {
-  if (editingListId) return;
+  if (editingListId || pendingListTemplateId) return;
   markSelectedType(type);
 }
+
 
 function markSelectedType(type) {
   selectedListType = type;
@@ -5125,8 +5121,15 @@ function saveList() {
     } else {
       newList = { id: uid(), name, icon: selectedListIcon, type: 'todo', tasks: [], months: {} };
     }
+    const tpl = pendingListTemplateId ? LIST_TEMPLATES.find(t => t.id === pendingListTemplateId) : null;
+    if (tpl && tpl.type === selectedListType) {
+      if (selectedListType === 'formulas') newList.fields = (tpl.fields || []).map(f => ({ id: uid(), ...f }));
+      if (selectedListType === 'habits') newList.habitTasks = (tpl.habitTasks || []).map(t => ({ id: uid(), ...t }));
+      if (selectedListType === 'todo') newList.tasks = (tpl.tasks || []).map(t => ({ id: uid(), ...t }));
+    }
     data.lists.push(newList);
   }
+  pendingListTemplateId = null;
   save();
   closeModal('listModal');
   render();
