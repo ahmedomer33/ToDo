@@ -514,6 +514,15 @@
   .widget-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
   .widget-reorder { display: flex; gap: 4px; }
   .widget-reorder .reorder-btn { padding: 2px 6px; font-size: 10px; }
+  .widget-gear {
+    background: none;
+    color: #9CA3AF;
+    font-size: 12px;
+    padding: 2px 6px;
+    line-height: 1;
+    border-radius: 6px;
+  }
+  .widget-gear:hover { background: var(--primary-tint-3); }
   .widget-unpin {
     background: none;
     color: #9CA3AF;
@@ -542,9 +551,19 @@
   .widget-info { flex: 1; min-width: 0; }
   .widget-name { font-weight: 800; font-size: 14px; color: var(--primary-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .widget-worksheet { font-size: 11.5px; color: #9CA3AF; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .widget-side { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .widget-side { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; max-width: 108px; }
   .widget-ring { line-height: 0; }
   .widget-line { font-size: 12.5px; color: #4b5563; text-align: center; line-height: 1.4; white-space: nowrap; }
+  .widget-extra {
+    font-size: 11px;
+    color: #6b7280;
+    text-align: center;
+    line-height: 1.3;
+    max-width: 108px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 
   /* Bottom tab bar — persistent across all screens, calm styling matching the
      rest of the app (white pill, purple accent). The active tab's icon simply
@@ -1456,6 +1475,28 @@
       <button class="btn-danger" id="deleteEntryBtn" onclick="deleteEntry()" style="display:none;margin-left:auto">حذف</button>
       <button class="btn-secondary" onclick="closeModal('entryModal')">إلغاء</button>
       <button class="btn-primary" onclick="saveEntry()">حفظ</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Widget extra-data settings -->
+<div class="modal-overlay" id="widgetExtraModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">⚙️ بيانات الويدجت</div>
+      <button class="close-btn" onclick="closeModal('widgetExtraModal')">×</button>
+    </div>
+    <div class="form-group">
+      <label>البيانات الظاهرة بجوار النسبة</label>
+      <select id="widgetExtraMode" onchange="onWidgetExtraModeChange()"></select>
+    </div>
+    <div class="form-group" id="widgetExtraTargetGroup" style="display:none">
+      <label id="widgetExtraTargetLabel">العنصر</label>
+      <select id="widgetExtraTarget"></select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('widgetExtraModal')">إلغاء</button>
+      <button class="btn-primary" onclick="saveWidgetExtra()">حفظ</button>
     </div>
   </div>
 </div>
@@ -2782,36 +2823,77 @@ function openPinnedWidget(listId) {
   openList(listId);
 }
 
+// Human-readable value of a single task/habit record, for use when a widget
+// is configured to show one specific item next to its ring instead of the
+// default month/day status.
+function formatTaskValue(task, rec) {
+  if (!isFilled(task, rec)) return (!task.inputType || task.inputType === 'checkbox') ? '⬜ لم تُنجز' : '—';
+  if (!task.inputType || task.inputType === 'checkbox') return '✅ منجزة';
+  return String(rec.value);
+}
+
 function computeWidgetSummary(list) {
+  const cfg = list.widgetExtra || { mode: 'default' };
   if (list.type === 'todo') {
-    const percent = getMonthPercent(list, getCurrentMonth());
-    const status = getMonthStatus(list, getCurrentMonth());
-    return { percent, line: `الشهر الحالي · ${statusLabel(status)}` };
+    const month = getCurrentMonth();
+    const percent = getMonthPercent(list, month);
+    const status = getMonthStatus(list, month);
+    const tasks = list.tasks || [];
+    const monthData = list.months?.[month];
+    const completed = tasks.filter(t => isFilled(t, monthData?.records?.[t.id])).length;
+    let extra = `الشهر الحالي · ${statusLabel(status)}`;
+    if (cfg.mode === 'remaining') extra = `متبقي ${tasks.length - completed} من ${tasks.length}`;
+    else if (cfg.mode === 'done') extra = `منجز ${completed} من ${tasks.length}`;
+    else if (cfg.mode === 'task') {
+      const task = tasks.find(t => t.id === cfg.targetId);
+      if (task) extra = `${task.name}: ${formatTaskValue(task, monthData?.records?.[task.id])}`;
+    }
+    return { percent, extra };
   }
   if (list.type === 'habits') {
     const today = getCurrentDateStr();
     const percent = getHabitDayPercent(list, today);
     const status = getHabitDayStatus(list, today);
-    return { percent, line: `اليوم · ${statusLabel(status)}` };
+    const tasks = list.habitTasks || [];
+    const dayData = (list.habitDays || {})[today];
+    const completed = tasks.filter(t => isFilled(t, dayData?.records?.[t.id])).length;
+    let extra = `اليوم · ${statusLabel(status)}`;
+    if (cfg.mode === 'remaining') extra = `متبقي اليوم ${tasks.length - completed} من ${tasks.length}`;
+    else if (cfg.mode === 'done') extra = `منجز اليوم ${completed} من ${tasks.length}`;
+    else if (cfg.mode === 'task') {
+      const task = tasks.find(t => t.id === cfg.targetId);
+      if (task) extra = `${task.name}: ${formatTaskValue(task, dayData?.records?.[task.id])}`;
+    }
+    return { percent, extra };
   }
   if (list.type === 'notes') {
     const notes = list.notes || [];
     const checkable = notes.filter(n => n.kind === 'checkbox');
     if (checkable.length) {
       const done = checkable.filter(n => n.checked).length;
-      return { percent: Math.round(done / checkable.length * 100), line: `${done} من ${checkable.length} منجزة (${notes.length} ملاحظة)` };
+      let extra = `${done} من ${checkable.length} منجزة (${notes.length} ملاحظة)`;
+      if (cfg.mode === 'remaining') extra = `متبقي ${checkable.length - done} من ${checkable.length}`;
+      else if (cfg.mode === 'item') {
+        const note = checkable.find(n => n.id === cfg.targetId);
+        if (note) extra = `${note.checked ? '✅' : '⬜'} ${(note.text || '').slice(0, 24)}`;
+      }
+      return { percent: Math.round(done / checkable.length * 100), extra };
     }
     return { percent: null, badge: String(notes.length), line: notes.length === 1 ? 'ملاحظة واحدة' : 'ملاحظة' };
   }
   if (list.type === 'formulas') {
-    if (isPureAccumulateList(list)) {
-      const fields = (list.fields || []).filter(f => f.type === 'accumulate');
+    const accFields = (list.fields || []).filter(f => f.type === 'accumulate');
+    const fieldValue = (f) => {
       const series = computeAccumulateSeries(list);
-      const lines = fields.map(f => {
-        const arr = series[f.id] || [];
-        const val = arr.length ? arr[arr.length - 1] : ((f.startValue !== undefined && f.startValue !== null && f.startValue !== '') ? f.startValue : (f.operation === 'multiply' ? 1 : 0));
-        return `${f.name}: ${val}`;
-      });
+      const arr = series[f.id] || [];
+      return arr.length ? arr[arr.length - 1] : ((f.startValue !== undefined && f.startValue !== null && f.startValue !== '') ? f.startValue : (f.operation === 'multiply' ? 1 : 0));
+    };
+    if (cfg.mode === 'field' && cfg.targetId) {
+      const field = accFields.find(f => f.id === cfg.targetId);
+      if (field) return { percent: null, lines: [`${field.name}: ${fieldValue(field)}`] };
+    }
+    if (isPureAccumulateList(list)) {
+      const lines = accFields.map(f => `${f.name}: ${fieldValue(f)}`);
       return { percent: null, lines: lines.length ? lines : ['لا توجد خانات بعد'] };
     }
     const entryCount = (list.entries || []).length;
@@ -2829,6 +2911,7 @@ function renderWidgetCard(listId, idx, total) {
   const bodyHtml = s.lines
     ? s.lines.map(l => `<div class="widget-line">${escapeHtml(l)}</div>`).join('')
     : `<div class="widget-line">${s.badge !== undefined ? `<b>${escapeHtml(s.badge)}</b> ` : ''}${escapeHtml(s.line || '')}</div>`;
+  const extraHtml = (ringHtml && s.extra) ? `<div class="widget-extra">${escapeHtml(s.extra)}</div>` : '';
   return `
     <div class="widget-card">
       <div class="widget-card-top">
@@ -2836,6 +2919,7 @@ function renderWidgetCard(listId, idx, total) {
           <button class="reorder-btn" onclick="event.stopPropagation(); moveWidget(${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>◂</button>
           <button class="reorder-btn" onclick="event.stopPropagation(); moveWidget(${idx}, 1)" ${idx === total - 1 ? 'disabled' : ''}>▸</button>
         </div>
+        <button class="widget-gear" title="بيانات الويدجت" onclick="event.stopPropagation(); openWidgetExtraModal('${list.id}')">⚙️</button>
         <button class="widget-unpin" title="إلغاء تثبيت هذا الويدجت" onclick="event.stopPropagation(); toggleWidgetPin('${list.id}')">✕</button>
       </div>
       <div class="widget-card-body" onclick="openPinnedWidget('${list.id}')">
@@ -2845,7 +2929,7 @@ function renderWidgetCard(listId, idx, total) {
           <div class="widget-worksheet">${escapeHtml(worksheet.name)}</div>
         </div>
         <div class="widget-side">
-          ${ringHtml ? `<div class="widget-ring">${ringHtml}</div>` : bodyHtml}
+          ${ringHtml ? `<div class="widget-ring">${ringHtml}</div>${extraHtml}` : bodyHtml}
         </div>
       </div>
     </div>
@@ -2865,6 +2949,107 @@ function renderWidgetsSection() {
       </div>
     </div>
   `;
+}
+
+// ---- Widget extra-data settings modal ----
+// Lets the user pick, per pinned list, which specific piece of data (a
+// certain task/habit/note, or an alternative stat like "remaining") shows
+// next to that widget's ring — instead of the fixed default line.
+let editingWidgetExtraListId = null;
+
+function getWidgetExtraOptions(list) {
+  if (list.type === 'todo') {
+    return [
+      { value: 'default', label: 'الافتراضي (حالة الشهر الحالي)' },
+      { value: 'remaining', label: 'عدد المهام المتبقية هذا الشهر' },
+      { value: 'done', label: 'عدد المهام المنجزة هذا الشهر' },
+      { value: 'task', label: 'مهمة معينة من القائمة' }
+    ];
+  }
+  if (list.type === 'habits') {
+    return [
+      { value: 'default', label: 'الافتراضي (حالة اليوم)' },
+      { value: 'remaining', label: 'عدد العادات المتبقية اليوم' },
+      { value: 'done', label: 'عدد العادات المنجزة اليوم' },
+      { value: 'task', label: 'عادة معينة من القائمة' }
+    ];
+  }
+  if (list.type === 'notes') {
+    return [
+      { value: 'default', label: 'الافتراضي' },
+      { value: 'remaining', label: 'عدد العناصر المتبقية' },
+      { value: 'item', label: 'عنصر معين من القائمة' }
+    ];
+  }
+  if (list.type === 'formulas') {
+    return [
+      { value: 'default', label: 'الافتراضي' },
+      { value: 'field', label: 'خانة معينة' }
+    ];
+  }
+  return [{ value: 'default', label: 'الافتراضي' }];
+}
+
+// Which modes need a second "pick one item" select, and where that list of
+// items comes from.
+function getWidgetExtraTargets(list) {
+  if (list.type === 'todo') return (list.tasks || []).map(t => ({ id: t.id, name: t.name }));
+  if (list.type === 'habits') return (list.habitTasks || []).map(t => ({ id: t.id, name: t.name }));
+  if (list.type === 'notes') return (list.notes || []).filter(n => n.kind === 'checkbox').map(n => ({ id: n.id, name: (n.text || '').slice(0, 30) || 'ملاحظة' }));
+  if (list.type === 'formulas') return (list.fields || []).filter(f => f.type === 'accumulate').map(f => ({ id: f.id, name: f.name }));
+  return [];
+}
+
+const WIDGET_EXTRA_TARGET_LABELS = { todo: 'المهمة', habits: 'العادة', notes: 'العنصر', formulas: 'الخانة' };
+const WIDGET_EXTRA_MODES_WITH_TARGET = ['task', 'item', 'field'];
+
+function openWidgetExtraModal(listId) {
+  const loc = findListLocation(listId);
+  if (!loc) return;
+  editingWidgetExtraListId = listId;
+  const { list } = loc;
+  const cfg = list.widgetExtra || { mode: 'default' };
+  const modeSelect = document.getElementById('widgetExtraMode');
+  modeSelect.innerHTML = getWidgetExtraOptions(list).map(o => `<option value="${o.value}">${escapeHtml(o.label)}</option>`).join('');
+  modeSelect.value = cfg.mode || 'default';
+  document.getElementById('widgetExtraTargetLabel').textContent = WIDGET_EXTRA_TARGET_LABELS[list.type] || 'العنصر';
+  onWidgetExtraModeChange(cfg.targetId);
+  openModal('widgetExtraModal');
+}
+
+function onWidgetExtraModeChange(preselectId) {
+  const loc = findListLocation(editingWidgetExtraListId);
+  if (!loc) return;
+  const { list } = loc;
+  const mode = document.getElementById('widgetExtraMode').value;
+  const group = document.getElementById('widgetExtraTargetGroup');
+  const targetSelect = document.getElementById('widgetExtraTarget');
+  if (!WIDGET_EXTRA_MODES_WITH_TARGET.includes(mode)) {
+    group.style.display = 'none';
+    return;
+  }
+  const targets = getWidgetExtraTargets(list);
+  group.style.display = targets.length ? '' : 'none';
+  targetSelect.innerHTML = targets.length
+    ? targets.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('')
+    : '<option value="">لا توجد عناصر بعد</option>';
+  if (preselectId && targets.some(t => t.id === preselectId)) targetSelect.value = preselectId;
+}
+
+function saveWidgetExtra() {
+  const loc = findListLocation(editingWidgetExtraListId);
+  if (!loc) return;
+  const { list } = loc;
+  const mode = document.getElementById('widgetExtraMode').value;
+  const config = { mode };
+  if (WIDGET_EXTRA_MODES_WITH_TARGET.includes(mode)) {
+    const targetId = document.getElementById('widgetExtraTarget').value;
+    if (targetId) config.targetId = targetId;
+  }
+  list.widgetExtra = config;
+  save();
+  closeModal('widgetExtraModal');
+  render();
 }
 
 function computeGlobalStats() {
