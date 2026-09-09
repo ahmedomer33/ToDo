@@ -254,7 +254,7 @@
   .drawer-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.35);
+    background: rgba(31,41,55,0.35);
     z-index: 70;
     display: none;
   }
@@ -266,29 +266,59 @@
     width: 270px;
     max-width: 80vw;
     height: 100%;
-    background: linear-gradient(180deg, var(--primary-text), var(--primary-accent));
-    color: #fff;
+    background: #fff;
+    color: var(--primary-text);
     z-index: 80;
     transition: right 0.25s ease;
-    padding: 18px;
-    box-shadow: -6px 0 24px rgba(0,0,0,0.2);
+    padding: 16px;
+    box-shadow: -8px 0 28px rgba(31,41,55,0.14);
+    overflow-y: auto;
   }
   .drawer.open { right: 0; }
-  .drawer-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
-  .drawer-title { font-size: 18px; font-weight: 800; }
-  .drawer .close-btn { background: rgba(255,255,255,0.15); color: #fff; width: 32px; height: 32px; border-radius: 8px; font-size: 18px; }
+  .drawer-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 14px; margin-bottom: 12px; border-bottom: 1px solid var(--primary-border); }
+  .drawer-title { font-size: 17px; font-weight: 800; color: var(--primary-text); }
+  .drawer .close-btn { background: var(--primary-tint-3); color: var(--primary-text); width: 32px; height: 32px; border-radius: 10px; font-size: 18px; }
+  .drawer-profile {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--primary-tint-3);
+    border-radius: 14px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+  }
+  .drawer-profile .avatar {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+  }
+  .drawer-profile .name { font-weight: 800; font-size: 14.5px; color: var(--primary-text); }
   .drawer-item {
     display: flex;
     align-items: center;
     gap: 10px;
     padding: 12px 10px;
-    border-radius: 10px;
+    border-radius: 12px;
     cursor: pointer;
-    font-size: 15px;
-    margin-bottom: 4px;
+    font-size: 14.5px;
+    font-weight: 600;
+    color: var(--primary-text);
+    margin-bottom: 3px;
     transition: background 0.15s;
   }
-  .drawer-item:hover { background: rgba(255,255,255,0.12); }
+  .drawer-item:hover { background: var(--primary-tint-3); }
+  .drawer-item.danger:hover { background: #FEE2E2; color: #B91C1C; }
+  .drawer-item.highlight-admin { background: #FEF3C7; color: #92400E; }
+  .drawer-item.highlight-legacy { background: #FFEDD5; color: #9A3412; }
+  .drawer-divider { height: 1px; background: var(--primary-border); margin: 8px 2px; }
+  .drawer-foot { color: #9CA3AF; padding: 10px; font-size: 12.5px; }
 
   /* Auth screen */
   #authScreen { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
@@ -1103,20 +1133,25 @@
     </div>
     <button class="close-btn" onclick="closeDrawer()">×</button>
   </div>
-  <div class="drawer-item" style="opacity:0.85;cursor:default">👤 <span id="drawerUsername">—</span></div>
+  <div class="drawer-profile">
+    <div class="avatar">👤</div>
+    <div class="name" id="drawerUsername">—</div>
+  </div>
   <div class="drawer-item" onclick="closeDrawer(); goBackToWorksheets();">🏠 <span>الرئيسية</span></div>
   <div class="drawer-item" onclick="closeDrawer(); openSettingsScreen();">⚙️ <span>إعدادات الحساب</span></div>
-  <div class="drawer-item" id="adminDrawerItem" style="display:none;background:rgba(251,191,36,0.18)" onclick="closeDrawer(); openAdminScreen();">👑 <span>لوحة الأدمن</span></div>
+  <div class="drawer-item highlight-admin" id="adminDrawerItem" style="display:none" onclick="closeDrawer(); openAdminScreen();">👑 <span>لوحة الأدمن</span></div>
+  <div class="drawer-divider"></div>
   <div class="drawer-item" onclick="replayOnboarding();">📖 <span>جولة تعريفية بالتطبيق</span></div>
   <div class="drawer-item" onclick="closeDrawer(); openUserGuideModal();">📚 <span>دليل الاستخدام</span></div>
-  <div class="drawer-item" id="restoreLegacyBtn" style="display:none;background:rgba(249,115,22,0.18)" onclick="closeDrawer(); restoreLegacyData();">🗃️ <span>استعادة بياناتي القديمة (قبل الحسابات)</span></div>
+  <div class="drawer-item highlight-legacy" id="restoreLegacyBtn" style="display:none" onclick="closeDrawer(); restoreLegacyData();">🗃️ <span>استعادة بياناتي القديمة (قبل الحسابات)</span></div>
   <div class="drawer-item" onclick="closeDrawer(); exportBackup();">⬇️ <span>تصدير نسخة احتياطية</span></div>
   <div class="drawer-item" onclick="closeDrawer(); triggerImport();">⬆️ <span>استيراد نسخة</span></div>
   <div class="drawer-item" onclick="closeDrawer(); openWhatsNewModal();">🆕 <span>ما الجديد؟</span><span id="whatsNewDot" style="display:none;width:8px;height:8px;border-radius:50%;background:#F97316;margin-right:6px"></span></div>
   <div class="drawer-item" onclick="closeDrawer(); showInfoModal();">ℹ️ <span>كيف تُحفظ بياناتي؟</span></div>
-  <div class="drawer-item" onclick="closeDrawer(); logout();">🚪 <span>تسجيل الخروج</span></div>
-  <div class="hint" style="color:rgba(255,255,255,0.6);padding:10px" id="lastSavedInfo">لم يتم الحفظ بعد</div>
-  <div class="hint" style="color:rgba(255,255,255,0.4);padding:0 10px 10px" id="drawerVersion"></div>
+  <div class="drawer-divider"></div>
+  <div class="drawer-item danger" onclick="closeDrawer(); logout();">🚪 <span>تسجيل الخروج</span></div>
+  <div class="drawer-foot" id="lastSavedInfo">لم يتم الحفظ بعد</div>
+  <div class="drawer-foot" style="padding-top:0" id="drawerVersion"></div>
 </div>
 <input type="file" id="importFileInput" accept="application/json" style="display:none" onchange="importBackup(event)">
 <input type="file" id="avatarFileInput" accept="image/*" style="display:none" onchange="handleAvatarFile(event)">
@@ -1806,12 +1841,20 @@ function markOnboardingSeen() {
 const WHATSNEW_SEEN_KEY = 'todoAppWhatsNewSeenVersion';
 const CHANGELOG = [
   {
-    version: 'V07.09.26',
-    title: 'شريط تنقّل بتصميم جديد وموجة متحركة',
+    version: 'V08.09.26',
+    title: 'قائمة جانبية أبسط ومتناسقة مع باقي التطبيق',
     items: [
-      'الشريط السفلي بقى عائم (Floating) بشكل كبسولة داكنة بدل الشريط الأبيض الثابت',
-      'أُضيف مؤشر على شكل موجة متحركة بيتنقّل بسلاسة تحت التبويب النشط عند الضغط على أي تبويب',
-      'ألوان التبويب النشط بقت أوضح فوق الخلفية الداكنة لسهولة التمييز'
+      'القائمة الجانبية (الدرج) بقت بخلفية بيضاء هادئة بدل التدرج الغامق، لتتناسق مع باقي شاشات التطبيق',
+      'أُضيفت بطاقة صغيرة لاسم المستخدم في أعلى القائمة، وفواصل بسيطة بين مجموعات الخيارات',
+      'ألوان العناصر (زي لوحة الأدمن واستعادة البيانات القديمة وتسجيل الخروج) بقت أوضح وأهدأ'
+    ]
+  },
+  {
+    version: 'V07.09.26',
+    title: 'شريط تنقّل بتصميم جديد',
+    items: [
+      'الشريط السفلي بقى عائم (Floating) بشكل كبسولة بدل الشريط الأبيض الثابت',
+      'ألوان التبويب النشط بقت أوضح لسهولة التمييز'
     ]
   },
   {
@@ -5523,7 +5566,7 @@ setInterval(checkReminders, 20000);
 // ============ Init ============
 // Single source of truth for the version shown on the splash screen — keep in
 // sync with the "version" field in package.json when it's bumped.
-const APP_VERSION = 'V07.09.26';
+const APP_VERSION = 'V08.09.26';
 
 function hideSplashScreen() {
   const el = document.getElementById('splashScreen');
