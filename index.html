@@ -165,6 +165,36 @@
   .list-item-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 8px; border-top: 1px solid rgba(31,41,55,0.06); }
   .list-item-actions-right { display: flex; align-items: center; gap: 6px; }
 
+  /* Reminders screen — one gathered list of every active task/habit reminder */
+  .reminder-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 4px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--primary-border);
+  }
+  .reminder-row:last-child { border-bottom: none; }
+  .reminder-row:hover { background: var(--primary-tint-3); border-radius: 12px; }
+  .reminder-icon {
+    font-size: 20px;
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    line-height: 42px;
+    text-align: center;
+    border-radius: 12px;
+    background: var(--accent-yellow-tint);
+    flex-shrink: 0;
+  }
+  .reminder-info { flex: 1; min-width: 0; }
+  .reminder-name { font-weight: 700; font-size: 14.5px; color: var(--primary-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .reminder-meta { font-size: 12px; color: #9CA3AF; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .reminder-time-wrap { flex-shrink: 0; display: flex; align-items: center; gap: 8px; }
+  .reminder-time { font-size: 12.5px; color: #4b5563; font-weight: 600; white-space: nowrap; }
+  .reminder-off-btn { background: none; color: #9CA3AF; font-size: 15px; padding: 4px 6px; border-radius: 8px; }
+  .reminder-off-btn:hover { background: #fee2e2; color: #ef4444; }
+
   /* Month view */
   .month-header {
     display: flex;
@@ -1158,6 +1188,7 @@
     <div class="name" id="drawerUsername">—</div>
   </div>
   <div class="drawer-item" onclick="closeDrawer(); goBackToWorksheets();">🏠 <span>الرئيسية</span></div>
+  <div class="drawer-item" onclick="closeDrawer(); openRemindersScreen();">🔔 <span>التنبيهات</span></div>
   <div class="drawer-item" onclick="closeDrawer(); openSettingsScreen();">⚙️ <span>إعدادات الحساب</span></div>
   <div class="drawer-item highlight-admin" id="adminDrawerItem" style="display:none" onclick="closeDrawer(); openAdminScreen();">👑 <span>لوحة الأدمن</span></div>
   <div class="drawer-divider"></div>
@@ -1750,7 +1781,7 @@
 // ============ Auth state ============
 let currentUser = null; // logged-in username, or null when signed out
 let authMode = 'login'; // 'login' | 'signup'
-let appScreen = null; // null (normal app) | 'settings' | 'admin'
+let appScreen = null; // null (normal app) | 'settings' | 'admin' | 'reminders'
 let onboardingStep = 0;
 
 // ============ Theming (per-account theme color) ============
@@ -2738,6 +2769,7 @@ function render() {
   const app = document.getElementById('app');
   if (appScreen === 'settings') { renderSettingsView(app); renderBottomTabBar(); return; }
   if (appScreen === 'admin') { renderAdminView(app); renderBottomTabBar(); return; }
+  if (appScreen === 'reminders') { renderRemindersView(app); renderBottomTabBar(); return; }
   if (!currentWorksheetId) {
     renderWorksheetsView(app);
   } else if (!currentListId) {
@@ -2756,6 +2788,7 @@ function openAdminScreen() {
   appScreen = 'admin';
   render();
 }
+function openRemindersScreen() { appScreen = 'reminders'; render(); }
 function closeAppScreen() { appScreen = null; render(); }
 
 function renderDonutRing(percent, color, size) {
@@ -3074,6 +3107,71 @@ function computeGlobalStats() {
 }
 
 // ---- Account settings screen ----
+// ============ Reminders screen (all active reminders in one place) ============
+function renderRemindersView(app) {
+  const reminders = collectAllTasksWithReminders();
+  reminders.sort((a, b) => (a.task.reminder.time || '').localeCompare(b.task.reminder.time || ''));
+  const rowsHtml = reminders.length
+    ? reminders.map(r => {
+        const { task, list, worksheet } = r;
+        const timeLabel = task.reminder.date
+          ? `${formatGregorianFull(task.reminder.date)} · ${escapeHtml(task.reminder.time)}`
+          : `يوميًا · ${escapeHtml(task.reminder.time)}`;
+        return `
+          <div class="reminder-row" onclick="openReminderTask('${list.id}','${task.id}')">
+            <div class="reminder-icon">${task.icon || '🔔'}</div>
+            <div class="reminder-info">
+              <div class="reminder-name">${escapeHtml(task.name)}</div>
+              <div class="reminder-meta">${escapeHtml(list.name)} · ${escapeHtml(worksheet.name)}</div>
+            </div>
+            <div class="reminder-time-wrap">
+              <div class="reminder-time">${timeLabel}</div>
+              <button class="reminder-off-btn" title="إيقاف هذا التذكير" onclick="event.stopPropagation(); disableReminderQuick('${list.id}','${task.id}')">🔕</button>
+            </div>
+          </div>
+        `;
+      }).join('')
+    : `<p class="hint" style="text-align:center;padding:20px 0">لا توجد تذكيرات مفعّلة حاليًا. فعّل تذكيرًا من أي مهمة أو عادة وستظهر هنا مجمّعة.</p>`;
+
+  app.innerHTML = `
+    <button class="btn-secondary back-btn" onclick="closeAppScreen()">→ العودة</button>
+    <div class="page-header">
+      <div class="page-header-icon hdr-yellow">🔔</div>
+      <h1>التنبيهات</h1>
+    </div>
+    <div class="card">
+      ${rowsHtml}
+    </div>
+  `;
+}
+
+// Jumps from the reminders screen straight into the task's own list/edit
+// modal, resolving whichever worksheet it lives in first (a reminder can be
+// for a task in any worksheet, not just the one currently open).
+function openReminderTask(listId, taskId) {
+  const loc = findListLocation(listId);
+  if (!loc) return;
+  currentWorksheetId = loc.worksheet.id;
+  data.lists = loc.worksheet.lists;
+  appScreen = null;
+  openList(listId);
+  openEditTaskModal(taskId);
+}
+
+// Turns a single reminder off without leaving the reminders screen.
+function disableReminderQuick(listId, taskId) {
+  const loc = findListLocation(listId);
+  if (!loc) return;
+  const taskArr = loc.list.type === 'habits' ? loc.list.habitTasks : loc.list.tasks;
+  const task = (taskArr || []).find(t => t.id === taskId);
+  if (!task || !task.reminder) return;
+  task.reminder.enabled = false;
+  clearFiredRemindersFor(task.id);
+  save();
+  if (IS_NATIVE) syncNativeReminders();
+  render();
+}
+
 function renderSettingsView(app) {
   const rec = findUserRecord(currentUser) || {};
   const avatarHtml = rec.avatar
@@ -5632,9 +5730,9 @@ function collectAllTasksWithReminders() {
   (data.worksheets || []).forEach(ws => {
     (ws.lists || []).forEach(list => {
       if (list.type === 'todo') {
-        (list.tasks || []).forEach(t => { if (t.reminder && t.reminder.enabled && t.reminder.time) results.push({ task: t, list }); });
+        (list.tasks || []).forEach(t => { if (t.reminder && t.reminder.enabled && t.reminder.time) results.push({ task: t, list, worksheet: ws }); });
       } else if (list.type === 'habits') {
-        (list.habitTasks || []).forEach(t => { if (t.reminder && t.reminder.enabled && t.reminder.time) results.push({ task: t, list }); });
+        (list.habitTasks || []).forEach(t => { if (t.reminder && t.reminder.enabled && t.reminder.time) results.push({ task: t, list, worksheet: ws }); });
       }
     });
   });
