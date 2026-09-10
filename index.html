@@ -790,6 +790,28 @@
     padding: 20px;
   }
   .modal-overlay.active { display: flex; }
+
+  .alarm-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(160deg, var(--primary), var(--primary-darker));
+    z-index: 5000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 32px 24px;
+    color: #fff;
+  }
+  .alarm-overlay-icon { font-size: 64px; animation: alarmPulse 1s ease-in-out infinite; margin-bottom: 8px; }
+  .alarm-overlay-time { font-size: 44px; font-weight: 800; margin-bottom: 6px; }
+  .alarm-overlay-title { font-size: 20px; font-weight: 700; opacity: 0.95; }
+  .alarm-overlay-body { font-size: 16px; opacity: 0.85; margin-top: 4px; margin-bottom: 40px; }
+  .alarm-overlay-actions { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 320px; }
+  .alarm-overlay-actions .btn-primary { background: #fff; color: var(--primary); }
+  .alarm-overlay-actions .btn-secondary { background: rgba(255,255,255,0.15); color: #fff; border-color: rgba(255,255,255,0.4); }
+  @keyframes alarmPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
   .modal {
     background: #fff;
     border-radius: 20px;
@@ -1349,17 +1371,44 @@
       </label>
     </div>
     <div id="taskReminderFields" style="display:none">
-      <div style="display:flex;gap:8px">
-        <div class="form-group" style="flex:1">
-          <label>وقت التذكير</label>
-          <input type="time" id="taskReminderTime">
-        </div>
-        <div class="form-group" style="flex:1">
-          <label>التاريخ (اختياري)</label>
-          <input type="date" id="taskReminderDate">
+      <div class="form-group">
+        <div style="display:flex;gap:8px">
+          <button type="button" id="reminderModeFixedBtn" class="btn-secondary" style="flex:1" onclick="setReminderMode('fixed')">🕐 وقت محدد</button>
+          <button type="button" id="reminderModePrayerBtn" class="btn-secondary" style="flex:1" onclick="setReminderMode('prayer')">🕌 مرتبط بصلاة</button>
         </div>
       </div>
-      <p class="hint">اترك التاريخ فارغًا ليتكرر التذكير كل يوم في هذا الوقت (مناسب للعادات والعبادات)، أو حدّد تاريخًا لتذكير لمرة واحدة فقط.</p>
+      <div id="reminderFixedFields">
+        <div style="display:flex;gap:8px">
+          <div class="form-group" style="flex:1">
+            <label>وقت التذكير</label>
+            <input type="time" id="taskReminderTime">
+          </div>
+          <div class="form-group" style="flex:1">
+            <label>التاريخ (اختياري)</label>
+            <input type="date" id="taskReminderDate">
+          </div>
+        </div>
+        <p class="hint">اترك التاريخ فارغًا ليتكرر التذكير كل يوم في هذا الوقت (مناسب للعادات والعبادات)، أو حدّد تاريخًا لتذكير لمرة واحدة فقط.</p>
+      </div>
+      <div id="reminderPrayerFields" style="display:none">
+        <div style="display:flex;gap:8px">
+          <div class="form-group" style="flex:1">
+            <label>الصلاة</label>
+            <select id="taskReminderPrayer">
+              <option value="fajr">🌙 الفجر</option>
+              <option value="dhuhr">☀️ الظهر</option>
+              <option value="asr">🌤️ العصر</option>
+              <option value="maghrib">🌇 المغرب</option>
+              <option value="isha">🌌 العشاء</option>
+            </select>
+          </div>
+          <div class="form-group" style="flex:1">
+            <label>الفارق بالدقائق</label>
+            <input type="number" id="taskReminderOffset" value="0" step="1">
+          </div>
+        </div>
+        <p class="hint">رقم سالب = قبل الصلاة بهذا العدد من الدقائق، موجب = بعدها، صفر = في نفس وقت الأذان. يتطلّب تفعيل وضبط "تنبيهات مواقيت الصلاة" من الإعدادات أولًا.</p>
+      </div>
     </div>
     <div class="modal-actions">
       <button class="btn-danger" id="deleteTaskBtn" onclick="deleteTask()" style="display:none;margin-left:auto">حذف</button>
@@ -1796,6 +1845,20 @@
   </div>
 </div>
 
+<!-- Full-screen alarm overlay: shown instead of a plain notification while
+     the app is open and visible, so a reminder actually gets your attention
+     the way a phone alarm does. -->
+<div id="alarmOverlay" class="alarm-overlay" style="display:none">
+  <div class="alarm-overlay-icon" id="alarmOverlayIcon">🔔</div>
+  <div class="alarm-overlay-time" id="alarmOverlayTime"></div>
+  <div class="alarm-overlay-title" id="alarmOverlayTitle"></div>
+  <div class="alarm-overlay-body" id="alarmOverlayBody"></div>
+  <div class="alarm-overlay-actions">
+    <button class="btn-secondary alarm-snooze-btn" onclick="snoozeAlarmOverlay()">⏰ تأجيل 5 دقائق</button>
+    <button class="btn-primary alarm-dismiss-btn" onclick="dismissAlarmOverlay()">تم ✓</button>
+  </div>
+</div>
+
 <script>
 // ============ Auth state ============
 let currentUser = null; // logged-in username, or null when signed out
@@ -1934,21 +1997,22 @@ const WHATSNEW_SEEN_KEY = 'todoAppWhatsNewSeenVersion';
 const CHANGELOG = [
   {
     version: 'V12.09.26',
-    title: 'تنبيهات مواقيت الصلاة',
+    title: 'التحكم في صوت وخلفية شاشة التنبيه',
     items: [
-      'قسم جديد في الإعدادات "🕌 تنبيهات مواقيت الصلاة": تفعيل/إيقاف، تحديد الموقع تلقائيًا أو بكتابة المدينة، واختيار طريقة الحساب',
-      'يمكنك تفعيل تنبيه كل صلاة على حدة (الفجر، الظهر، العصر، المغرب، العشاء)',
-      'تنبيهات الصلاة تظهر مع باقي التذكيرات في شاشة "التنبيهات"، وتتحدّث مواقيتها تلقائيًا كل يوم'
+      'قسم جديد في الإعدادات "⏰ إعدادات شاشة التنبيه": اختيار نغمة التنبيه (كلاسيكي، هادئ، جرس، أو بدون صوت)',
+      '6 خلفيات جاهزة لشاشة التنبيه (اللون الأساسي، غروب، محيط، غابة، ليلي داكن، وردي)',
+      'زر "تجربة" لمعاينة شكل وصوت التنبيه فورًا من غير انتظار تذكير حقيقي'
     ]
   },
   {
     version: 'V11.09.26',
-    title: 'تحليلات ورسوم بيانية لكل أنواع القوائم',
+    title: 'تحليلات، تنبيهات مواقيت الصلاة، وربط تنبيهات المهام بالصلاة',
     items: [
-      'زر جديد 📊 أعلى أي قائمة (ماعدا الملاحظات) يفتح شاشة تحليلات لها',
-      'قوائم المعادلات: رسم بياني لكل خانة يوضح تطورها عبر الوقت، مع ملخص سريع (آخر قيمة، المتوسط، أعلى وأقل قيمة) وفلاتر (آخر أسبوع/شهر/كل الفترة)',
-      'قوائم العادات: رسم لنسبة الإنجاز اليومية %، ورسم منفصل لأي مهمة رقمية (زي عدد الصفحات)',
-      'قوائم التودو: رسم لنسبة الإنجاز الشهرية'
+      'زر جديد 📊 أعلى أي قائمة (ماعدا الملاحظات) يفتح شاشة تحليلات لها: رسوم بيانية للمعادلات، نسبة إنجاز يومية للعادات، ونسبة إنجاز شهرية للتودو',
+      'قسم جديد في الإعدادات "🕌 تنبيهات مواقيت الصلاة": تفعيل/إيقاف، تحديد الموقع تلقائيًا أو بكتابة المدينة، اختيار طريقة الحساب، وتفعيل كل صلاة على حدة',
+      'يمكن الآن ربط تذكير أي مهمة بصلاة معيّنة (قبل/بعد بعدد دقائق) بدل وقت ثابت',
+      'تنبيه بحجم الشاشة (زي المنبه) بدل إشعار عادي، لما يكون التطبيق مفتوحًا وقت التنبيه',
+      'بانر يوضّح لو إذن الإشعارات مش مفعّل بعد، عشان تعرف سبب عدم وصول أي تنبيه'
     ]
   },
   {
@@ -3173,9 +3237,11 @@ function renderRemindersView(app) {
   const rowsHtml = reminders.length
     ? reminders.map(r => {
         const { task, list, worksheet } = r;
-        const timeLabel = task.reminder.date
-          ? `${formatGregorianFull(task.reminder.date)} · ${escapeHtml(task.reminder.time)}`
-          : `يوميًا · ${escapeHtml(task.reminder.time)}`;
+        const timeLabel = task.reminder.mode === 'prayer'
+          ? `${PRAYER_ICONS[task.reminder.prayerKey] || '🕌'} ${formatPrayerOffsetLabel(task.reminder.offsetMinutes)} ${PRAYER_LABELS[task.reminder.prayerKey] || ''} · ${escapeHtml(task.reminder.time)}`
+          : (task.reminder.date
+            ? `${formatGregorianFull(task.reminder.date)} · ${escapeHtml(task.reminder.time)}`
+            : `يوميًا · ${escapeHtml(task.reminder.time)}`);
         return `
           <div class="reminder-row" onclick="openReminderTask('${list.id}','${task.id}')">
             <div class="reminder-icon">${task.icon || '🔔'}</div>
@@ -3256,6 +3322,15 @@ const PRAYER_METHODS = [
   { id: 13, label: 'ديانت - تركيا' }
 ];
 
+// True once the user has actually granted notification permission — native
+// (Capacitor LocalNotifications) or plain browser Notification API depending
+// on platform. Reminders (including prayer times) silently do nothing without
+// this, so the UI surfaces it explicitly rather than failing quietly.
+function notificationPermissionGranted() {
+  if (IS_NATIVE) return !!nativeNotificationsGranted;
+  return ('Notification' in window) && Notification.permission === 'granted';
+}
+
 function ensurePrayerSettings() {
   if (!data.prayerSettings) {
     data.prayerSettings = {
@@ -3267,6 +3342,73 @@ function ensurePrayerSettings() {
   if (!data.prayerSettings.prayers) {
     data.prayerSettings.prayers = { fajr: true, dhuhr: true, asr: true, maghrib: true, isha: true };
   }
+}
+
+// ============ Alarm overlay appearance/sound settings ============
+const ALARM_BG_PRESETS = [
+  { id: 'primary', label: 'اللون الأساسي', css: 'linear-gradient(160deg, var(--primary), var(--primary-darker))' },
+  { id: 'sunset', label: 'غروب', css: 'linear-gradient(160deg, #F97316, #7C2D12)' },
+  { id: 'ocean', label: 'محيط', css: 'linear-gradient(160deg, #0EA5E9, #0C4A6E)' },
+  { id: 'forest', label: 'غابة', css: 'linear-gradient(160deg, #22C55E, #14532D)' },
+  { id: 'night', label: 'ليلي داكن', css: 'linear-gradient(160deg, #1E293B, #0F172A)' },
+  { id: 'rose', label: 'وردي', css: 'linear-gradient(160deg, #F43F5E, #881337)' }
+];
+
+const ALARM_SOUND_OPTIONS = [
+  { id: 'classic', label: '🔔 كلاسيكي' },
+  { id: 'gentle', label: '🎐 هادئ' },
+  { id: 'bell', label: '🛎️ جرس' },
+  { id: 'none', label: '🔇 بدون صوت' }
+];
+
+function ensureAlarmSettings() {
+  if (!data.alarmSettings) data.alarmSettings = {};
+  if (!data.alarmSettings.sound) data.alarmSettings.sound = 'classic';
+  if (!data.alarmSettings.background) data.alarmSettings.background = 'primary';
+}
+
+function renderAlarmSettingsCard() {
+  ensureAlarmSettings();
+  const as = data.alarmSettings;
+  return `
+    <div class="card">
+      <div class="settings-section-title">⏰ إعدادات شاشة التنبيه</div>
+      <p class="hint" style="margin-top:-4px;margin-bottom:12px">تتحكم في شكل وصوت شاشة التنبيه الكبيرة التي تظهر عند وصول أي تذكير والتطبيق مفتوح.</p>
+      <div class="form-group">
+        <label>نغمة التنبيه</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${ALARM_SOUND_OPTIONS.map(o => `<button type="button" class="btn-secondary" style="${as.sound === o.id ? 'background:var(--primary);color:#fff;border-color:var(--primary)' : ''}" onclick="setAlarmSound('${o.id}')">${o.label}</button>`).join('')}
+        </div>
+      </div>
+      <div class="form-group">
+        <label>خلفية شاشة التنبيه</label>
+        <div style="display:flex;flex-wrap:wrap;gap:10px">
+          ${ALARM_BG_PRESETS.map(p => `
+            <div onclick="setAlarmBackground('${p.id}')" title="${escapeAttr(p.label)}" style="width:52px;height:40px;border-radius:10px;background:${p.css};cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:800;border:${as.background === p.id ? '3px solid #111' : '3px solid transparent'}">${as.background === p.id ? '✓' : ''}</div>
+          `).join('')}
+        </div>
+      </div>
+      <button type="button" class="btn-secondary" style="width:100%" onclick="testAlarmPreview()">▶️ تجربة شكل وصوت التنبيه</button>
+    </div>
+  `;
+}
+
+function setAlarmSound(id) {
+  ensureAlarmSettings();
+  data.alarmSettings.sound = id;
+  save();
+  render();
+}
+
+function setAlarmBackground(id) {
+  ensureAlarmSettings();
+  data.alarmSettings.background = id;
+  save();
+  render();
+}
+
+function testAlarmPreview() {
+  showAlarmOverlay({ name: 'معاينة' }, { icon: '🔔', name: 'هكذا سيبدو شكل وصوت التنبيه' });
 }
 
 function renderPrayerSettingsCard() {
@@ -3299,6 +3441,12 @@ function renderPrayerSettingsCard() {
         تفعيل تنبيهات مواقيت الصلاة
       </label>
       ${ps.enabled ? `
+        ${notificationPermissionGranted() ? '' : `
+          <div class="card" style="background:#FEF3C7;border-color:#FCD34D;margin-bottom:14px">
+            <p class="hint" style="color:#92400E;margin-bottom:8px">⚠️ التذكيرات (بما فيها مواقيت الصلاة) محتاجة إذن الإشعارات، وهو لسه مش مفعّل. من غيره مش هتوصلك أي تنبيهات.</p>
+            <button type="button" class="btn-primary" onclick="requestNotificationPermission()">🔔 تفعيل الإشعارات الآن</button>
+          </div>
+        `}
         <div class="form-group">
           <label>الموقع</label>
           <button type="button" class="btn-secondary" style="margin-bottom:10px" onclick="setPrayerLocationFromGeolocation()">📍 تحديد الموقع تلقائيًا</button>
@@ -3450,6 +3598,12 @@ function collectPrayerReminders() {
   return results;
 }
 
+function formatPrayerOffsetLabel(mins) {
+  const m = Number(mins) || 0;
+  if (m === 0) return 'عند';
+  return m < 0 ? `قبل ${Math.abs(m)}د` : `بعد ${m}د`;
+}
+
 function syncPrayerNativeIfNeeded() {
   if (IS_NATIVE) syncNativeReminders();
 }
@@ -3510,6 +3664,8 @@ function renderSettingsView(app) {
       </div>
       <button class="btn-primary" style="width:100%" onclick="changeAccountPassword()">حفظ كلمة المرور</button>
     </div>
+
+    ${renderAlarmSettingsCard()}
 
     ${renderPrayerSettingsCard()}
 
@@ -5733,7 +5889,10 @@ function openNewTaskModal() {
   document.getElementById('taskReminderEnabled').checked = false;
   document.getElementById('taskReminderTime').value = '';
   document.getElementById('taskReminderDate').value = '';
+  document.getElementById('taskReminderPrayer').value = 'fajr';
+  document.getElementById('taskReminderOffset').value = 0;
   document.getElementById('taskReminderFields').style.display = 'none';
+  setReminderMode('fixed');
   renderIconPicker('taskIconPicker', ICONS, selectedTaskIcon, (icon) => { selectedTaskIcon = icon; });
   renderOptionsTags();
   openModal('taskModal');
@@ -5756,10 +5915,27 @@ function openEditTaskModal(taskId) {
   document.getElementById('taskReminderEnabled').checked = !!reminder.enabled;
   document.getElementById('taskReminderTime').value = reminder.time || '';
   document.getElementById('taskReminderDate').value = reminder.date || '';
+  document.getElementById('taskReminderPrayer').value = reminder.prayerKey || 'fajr';
+  document.getElementById('taskReminderOffset').value = (reminder.offsetMinutes !== undefined && reminder.offsetMinutes !== null) ? reminder.offsetMinutes : 0;
   document.getElementById('taskReminderFields').style.display = reminder.enabled ? 'block' : 'none';
+  setReminderMode(reminder.mode === 'prayer' ? 'prayer' : 'fixed');
   renderIconPicker('taskIconPicker', ICONS, selectedTaskIcon, (icon) => { selectedTaskIcon = icon; });
   renderOptionsTags();
   openModal('taskModal');
+}
+
+let reminderMode = 'fixed'; // 'fixed' | 'prayer' — transient UI state for the task modal
+
+function setReminderMode(mode) {
+  reminderMode = mode;
+  document.getElementById('reminderFixedFields').style.display = mode === 'fixed' ? 'block' : 'none';
+  document.getElementById('reminderPrayerFields').style.display = mode === 'prayer' ? 'block' : 'none';
+  const fixedBtn = document.getElementById('reminderModeFixedBtn');
+  const prayerBtn = document.getElementById('reminderModePrayerBtn');
+  fixedBtn.style.background = mode === 'fixed' ? 'var(--primary)' : '';
+  fixedBtn.style.color = mode === 'fixed' ? '#fff' : '';
+  prayerBtn.style.background = mode === 'prayer' ? 'var(--primary)' : '';
+  prayerBtn.style.color = mode === 'prayer' ? '#fff' : '';
 }
 
 function onReminderToggle() {
@@ -5802,13 +5978,25 @@ function saveTask() {
     return;
   }
   const reminderEnabled = document.getElementById('taskReminderEnabled').checked;
-  const reminderTime = document.getElementById('taskReminderTime').value;
-  const reminderDate = document.getElementById('taskReminderDate').value;
-  if (reminderEnabled && !reminderTime) {
-    alert('حدّد وقت التذكير');
-    return;
+  let reminder;
+  if (reminderEnabled && reminderMode === 'prayer') {
+    ensurePrayerSettings();
+    if (!data.prayerSettings.enabled) {
+      alert('فعّل "تنبيهات مواقيت الصلاة" من الإعدادات أولًا عشان تقدر تربط تذكيرًا بصلاة.');
+      return;
+    }
+    const prayerKey = document.getElementById('taskReminderPrayer').value;
+    const offsetMinutes = parseInt(document.getElementById('taskReminderOffset').value, 10) || 0;
+    reminder = { enabled: true, mode: 'prayer', prayerKey, offsetMinutes, time: '', date: '' };
+  } else {
+    const reminderTime = document.getElementById('taskReminderTime').value;
+    const reminderDate = document.getElementById('taskReminderDate').value;
+    if (reminderEnabled && !reminderTime) {
+      alert('حدّد وقت التذكير');
+      return;
+    }
+    reminder = { enabled: reminderEnabled, mode: 'fixed', time: reminderEnabled ? reminderTime : '', date: reminderEnabled ? (reminderDate || '') : '' };
   }
-  const reminder = { enabled: reminderEnabled, time: reminderEnabled ? reminderTime : '', date: reminderEnabled ? (reminderDate || '') : '' };
   const list = data.lists.find(l => l.id === currentListId);
   const isHabit = list.type === 'habits';
   if (isHabit && !list.habitTasks) list.habitTasks = [];
@@ -6449,6 +6637,117 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const LN = IS_NATIVE && window.Capacitor.Plugins ? window.Capacitor.Plugins.LocalNotifications : null;
 let nativeNotificationsGranted = false;
 
+// ---- Full-screen alarm overlay ----
+// Shown instead of a plain notification whenever the app is open and visible,
+// so a reminder actually grabs attention like a phone alarm would. If the app
+// is closed/backgrounded there's no way to force a full-screen UI — that case
+// still falls back to a normal system notification (web) or OS-level alarm
+// notification (native), which is a platform limitation, not something this
+// app can override.
+let alarmSnoozeInfo = null;
+let alarmAudioCtx = null;
+let alarmAudioNodes = [];
+
+function nowTimeString() {
+  const now = new Date();
+  return `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
+}
+
+function showAlarmOverlay(list, task) {
+  const overlay = document.getElementById('alarmOverlay');
+  if (!overlay) return;
+  ensureAlarmSettings();
+  const bg = ALARM_BG_PRESETS.find(p => p.id === data.alarmSettings.background) || ALARM_BG_PRESETS[0];
+  overlay.style.background = bg.css;
+  document.getElementById('alarmOverlayIcon').textContent = (task && task.icon) || '🔔';
+  document.getElementById('alarmOverlayTime').textContent = nowTimeString();
+  document.getElementById('alarmOverlayTitle').textContent = (list && list.name) || '';
+  document.getElementById('alarmOverlayBody').textContent = (task && task.name) || '';
+  alarmSnoozeInfo = { list, task };
+  overlay.style.display = 'flex';
+  if (navigator.vibrate) { try { navigator.vibrate([400, 200, 400, 200, 400]); } catch (e) { /* ignore */ } }
+  playAlarmSound();
+}
+
+function dismissAlarmOverlay() {
+  const overlay = document.getElementById('alarmOverlay');
+  if (overlay) overlay.style.display = 'none';
+  stopAlarmSound();
+  alarmSnoozeInfo = null;
+}
+
+function snoozeAlarmOverlay() {
+  const info = alarmSnoozeInfo;
+  dismissAlarmOverlay();
+  if (!info) return;
+  setTimeout(() => { showAlarmOverlay(info.list, info.task); }, 5 * 60 * 1000);
+}
+
+// A few short tone patterns via Web Audio — no external sound files needed.
+// Each schedules its own beeps and self-stops; stopAlarmSound() cancels
+// everything still pending if the person dismisses early.
+let alarmAudioTimers = [];
+
+function scheduleBeep(freq, gainVal, durationMs, delayMs) {
+  const timerId = setTimeout(() => {
+    try {
+      const ctx = alarmAudioCtx;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.value = gainVal;
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      alarmAudioNodes.push(osc);
+      const stopTimer = setTimeout(() => { try { osc.stop(); } catch (e) { /* ignore */ } }, durationMs);
+      alarmAudioTimers.push(stopTimer);
+    } catch (e) { /* ignore — audio isn't critical to the reminder itself */ }
+  }, delayMs);
+  alarmAudioTimers.push(timerId);
+}
+
+function playAlarmSound() {
+  ensureAlarmSettings();
+  stopAlarmSound();
+  const soundType = data.alarmSettings.sound || 'classic';
+  if (soundType === 'none') return;
+  try {
+    if (!alarmAudioCtx) alarmAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  } catch (e) { return; }
+  alarmAudioNodes = [];
+  alarmAudioTimers = [];
+  if (soundType === 'gentle') {
+    for (let i = 0; i < 4; i++) scheduleBeep(523, 0.08, 700, i * 2000);
+  } else if (soundType === 'bell') {
+    for (let i = 0; i < 3; i++) {
+      scheduleBeep(784, 0.15, 350, i * 1400);
+      scheduleBeep(659, 0.15, 500, i * 1400 + 350);
+    }
+  } else {
+    scheduleBeep(880, 0.15, 15000, 0);
+  }
+}
+
+function stopAlarmSound() {
+  alarmAudioTimers.forEach(id => clearTimeout(id));
+  alarmAudioTimers = [];
+  (alarmAudioNodes || []).forEach(osc => { try { osc.stop(); } catch (e) { /* ignore */ } });
+  alarmAudioNodes = [];
+}
+
+// While the native app is in the foreground, Capacitor still delivers
+// scheduled local notifications through this listener — use it to also pop
+// the full-screen overlay for a consistent experience with the web fallback.
+if (IS_NATIVE && LN && LN.addListener) {
+  LN.addListener('localNotificationReceived', (notification) => {
+    const title = (notification.title || '🔔').replace(/^🔔\s*/, '');
+    const body = notification.body || '';
+    showAlarmOverlay({ name: title }, { icon: '🔔', name: body });
+  });
+}
+
 // Tracks which reminders already fired today (in-memory only) so the periodic
 // web-based check doesn't re-notify for the same task within the same day/minute.
 // (Not used on native — the OS itself guarantees a native alarm fires exactly once.)
@@ -6477,14 +6776,49 @@ function collectAllTasksWithReminders() {
   (data.worksheets || []).forEach(ws => {
     (ws.lists || []).forEach(list => {
       if (list.type === 'todo') {
-        (list.tasks || []).forEach(t => { if (t.reminder && t.reminder.enabled && t.reminder.time) results.push({ task: t, list, worksheet: ws }); });
+        (list.tasks || []).forEach(t => { const r = resolveTaskReminder(t); if (r) results.push({ task: { ...t, reminder: r }, list, worksheet: ws }); });
       } else if (list.type === 'habits') {
-        (list.habitTasks || []).forEach(t => { if (t.reminder && t.reminder.enabled && t.reminder.time) results.push({ task: t, list, worksheet: ws }); });
+        (list.habitTasks || []).forEach(t => { const r = resolveTaskReminder(t); if (r) results.push({ task: { ...t, reminder: r }, list, worksheet: ws }); });
       }
     });
   });
   results.push(...collectPrayerReminders());
   return results;
+}
+
+// Returns a resolved {enabled,time,date} reminder ready for the scheduling
+// code below, or null if this task has no active reminder to fire today.
+// Fixed-time reminders pass through unchanged; prayer-linked ones compute
+// today's clock time from today's cached prayer times + the saved offset,
+// as a one-time reminder for today (so it naturally re-resolves tomorrow
+// once the prayer cache refreshes, instead of drifting like a fixed daily
+// repeat would).
+function resolveTaskReminder(task) {
+  const r = task.reminder;
+  if (!r || !r.enabled) return null;
+  if (r.mode === 'prayer') {
+    ensurePrayerSettings();
+    const ps = data.prayerSettings;
+    const today = getCurrentDateStr();
+    if (!ps.cache || ps.cache.date !== today) return null;
+    const base = ps.cache.timings[r.prayerKey];
+    if (!base) return null;
+    const time = addMinutesToTimeStr(base, Number(r.offsetMinutes) || 0);
+    if (!time) return null;
+    return { enabled: true, time, date: today, mode: 'prayer', prayerKey: r.prayerKey, offsetMinutes: r.offsetMinutes };
+  }
+  if (!r.time) return null;
+  return r;
+}
+
+// Adds (possibly negative) minutes to an 'HH:MM' string, wrapping within the
+// same day.
+function addMinutesToTimeStr(hhmm, minutes) {
+  const [h, m] = (hhmm || '').split(':').map(Number);
+  if (isNaN(h) || isNaN(m)) return null;
+  let total = h * 60 + m + minutes;
+  total = ((total % 1440) + 1440) % 1440;
+  return `${pad2(Math.floor(total / 60))}:${pad2(total % 60)}`;
 }
 
 // ---- Web fallback (browser / plain PWA): poll every 20s while the app is open ----
@@ -6507,6 +6841,10 @@ function checkReminders() {
 }
 
 function fireReminderNotification(list, task) {
+  if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+    showAlarmOverlay(list, task);
+    return;
+  }
   const title = `🔔 ${list.name}`;
   const body = `${task.icon || ''} ${task.name}`.trim();
   const options = { body, tag: task.id, icon: './icon-192.png', badge: './icon-192.png' };
