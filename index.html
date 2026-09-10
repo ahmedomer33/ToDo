@@ -1934,11 +1934,12 @@ const WHATSNEW_SEEN_KEY = 'todoAppWhatsNewSeenVersion';
 const CHANGELOG = [
   {
     version: 'V11.09.26',
-    title: 'تحليلات ورسوم بيانية لقوائم المعادلات',
+    title: 'تحليلات ورسوم بيانية لكل أنواع القوائم',
     items: [
-      'زر جديد 📊 أعلى أي قائمة "جدول معادلات" يفتح شاشة تحليلات لكل خانة فيها',
-      'رسم بياني يوضح تطور القيمة عبر الوقت، مع ملخص سريع (آخر قيمة، المتوسط، أعلى وأقل قيمة)',
-      'فلاتر: آخر أسبوع، آخر شهر، أو كل الفترة'
+      'زر جديد 📊 أعلى أي قائمة (ماعدا الملاحظات) يفتح شاشة تحليلات لها',
+      'قوائم المعادلات: رسم بياني لكل خانة يوضح تطورها عبر الوقت، مع ملخص سريع (آخر قيمة، المتوسط، أعلى وأقل قيمة) وفلاتر (آخر أسبوع/شهر/كل الفترة)',
+      'قوائم العادات: رسم لنسبة الإنجاز اليومية %، ورسم منفصل لأي مهمة رقمية (زي عدد الصفحات)',
+      'قوائم التودو: رسم لنسبة الإنجاز الشهرية'
     ]
   },
   {
@@ -3751,7 +3752,7 @@ function renderDetailView(app) {
       <button class="icon-btn" onclick="goBack()" title="العودة">→</button>
       <div class="page-header-icon">${list.icon}</div>
       <h1>${escapeHtml(list.name)}</h1>
-      ${list.type === 'formulas' ? `<button class="icon-btn" style="margin-inline-start:auto" onclick="openAnalyticsScreen('${list.id}')" title="التحليلات">📊</button>` : ''}
+      ${list.type !== 'notes' ? `<button class="icon-btn" style="margin-inline-start:auto" onclick="openAnalyticsScreen('${list.id}')" title="التحليلات">📊</button>` : ''}
     </div>
   `;
 
@@ -4331,11 +4332,20 @@ function setAnalyticsRange(range) {
 
 function loadChartJs(callback) {
   if (window.Chart) { callback(); return; }
-  const script = document.createElement('script');
-  script.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js';
-  script.onload = callback;
-  script.onerror = () => alert('تعذّر تحميل أداة الرسم البياني. تأكد من اتصالك بالإنترنت وحاول مجددًا.');
-  document.head.appendChild(script);
+  const sources = [
+    'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js',
+    'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js'
+  ];
+  let i = 0;
+  function tryNext() {
+    if (i >= sources.length) { alert('تعذّر تحميل أداة الرسم البياني. تأكد من اتصالك بالإنترنت وحاول مجددًا.'); return; }
+    const script = document.createElement('script');
+    script.src = sources[i++];
+    script.onload = callback;
+    script.onerror = tryNext;
+    document.head.appendChild(script);
+  }
+  tryNext();
 }
 
 function formatAnalyticsDate(iso) {
@@ -4379,8 +4389,6 @@ function filterSeriesByRange(series) {
 function renderAnalyticsView(app) {
   const list = data.lists.find(l => l.id === currentListId);
   if (!list) { appScreen = null; render(); return; }
-  const fields = list.fields || [];
-  const entries = list.entries || [];
 
   let html = `
     <div class="page-header">
@@ -4390,8 +4398,34 @@ function renderAnalyticsView(app) {
     </div>
   `;
 
+  if (list.type === 'formulas') html += renderFormulasAnalyticsBody(list);
+  else if (list.type === 'habits') html += renderHabitsAnalyticsBody(list);
+  else if (list.type === 'todo') html += renderTodoAnalyticsBody(list);
+  else html += `<div class="card"><div class="empty-state"><div class="icon">📊</div><p>لا تتوفر تحليلات لهذا النوع من القوائم.</p></div></div>`;
+
+  app.innerHTML = html;
+  loadChartJs(() => { drawAnalyticsCharts(list); });
+}
+
+function drawAnalyticsCharts(list) {
+  if (list.type === 'formulas') {
+    (list.fields || []).forEach(f => drawFieldChart(list, f));
+  } else if (list.type === 'habits') {
+    drawHabitPercentChart(list);
+    (list.habitTasks || []).filter(t => t.inputType === 'number').forEach(t => drawHabitTaskChart(list, t));
+  } else if (list.type === 'todo') {
+    drawTodoPercentChart(list);
+  }
+}
+
+const analyticsRangeBtn = (key, label) => `<button class="btn-secondary" style="${analyticsRange === key ? 'background:var(--primary);color:#fff;border-color:var(--primary)' : ''}" onclick="setAnalyticsRange('${key}')">${label}</button>`;
+
+// ---- Formulas lists: one chart per field ----
+function renderFormulasAnalyticsBody(list) {
+  const fields = list.fields || [];
+  const entries = list.entries || [];
   if (fields.length === 0 || entries.length === 0) {
-    html += `
+    return `
       <div class="card">
         <div class="empty-state">
           <div class="icon">📊</div>
@@ -4399,25 +4433,18 @@ function renderAnalyticsView(app) {
         </div>
       </div>
     `;
-    app.innerHTML = html;
-    return;
   }
-
-  const rangeBtn = (key, label) => `<button class="btn-secondary" style="${analyticsRange === key ? 'background:var(--primary);color:#fff;border-color:var(--primary)' : ''}" onclick="setAnalyticsRange('${key}')">${label}</button>`;
-  html += `
+  let html = `
     <div class="card" style="margin-bottom:14px">
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        ${rangeBtn('week', 'آخر أسبوع')}
-        ${rangeBtn('month', 'آخر شهر')}
-        ${rangeBtn('all', 'كل الفترة')}
+        ${analyticsRangeBtn('week', 'آخر أسبوع')}
+        ${analyticsRangeBtn('month', 'آخر شهر')}
+        ${analyticsRangeBtn('all', 'كل الفترة')}
       </div>
     </div>
   `;
-
   fields.forEach(f => { html += renderFieldAnalyticsCard(list, f); });
-
-  app.innerHTML = html;
-  loadChartJs(() => { fields.forEach(f => drawFieldChart(list, f)); });
+  return html;
 }
 
 function renderFieldAnalyticsCard(list, field) {
@@ -4480,6 +4507,137 @@ function drawFieldChart(list, field) {
       plugins: { legend: { display: false } },
       scales: { x: { ticks: { maxRotation: 0, autoSkip: true } } }
     }
+  });
+}
+
+// ---- Habits lists: daily completion % + any numeric-task trends ----
+function renderHabitsAnalyticsBody(list) {
+  if (!(list.habitTasks || []).length) {
+    return `<div class="card"><div class="empty-state"><div class="icon">📊</div><p>أضف مهام أولًا لعرض تحليلاتها.</p></div></div>`;
+  }
+  let html = `
+    <div class="card" style="margin-bottom:14px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${analyticsRangeBtn('week', 'آخر أسبوع')}
+        ${analyticsRangeBtn('month', 'آخر شهر')}
+        ${analyticsRangeBtn('all', 'كل الفترة')}
+      </div>
+    </div>
+  `;
+
+  const percentSeries = filterHabitPointsByRange(getHabitCompletionSeries(list));
+  html += `
+    <div class="card" style="margin-bottom:14px">
+      <h2 style="margin:0 0 10px">✅ نسبة الإنجاز اليومية</h2>
+      ${percentSeries.length
+        ? `<div style="position:relative;height:220px"><canvas id="chart-habit-percent"></canvas></div>`
+        : `<div class="empty-state"><div class="icon">📉</div><p>لا توجد بيانات كافية لهذه الفترة.</p></div>`}
+    </div>
+  `;
+
+  (list.habitTasks || []).filter(t => t.inputType === 'number').forEach(t => {
+    const series = filterHabitPointsByRange(getHabitTaskNumericSeries(list, t));
+    html += `
+      <div class="card" style="margin-bottom:14px">
+        <h2 style="margin:0 0 10px">${t.icon || '🔢'} ${escapeHtml(t.name)}</h2>
+        ${series.length
+          ? `<div style="position:relative;height:220px"><canvas id="chart-habit-task-${t.id}"></canvas></div>`
+          : `<div class="empty-state"><div class="icon">📉</div><p>لا توجد بيانات كافية لهذه الفترة.</p></div>`}
+      </div>
+    `;
+  });
+
+  return html;
+}
+
+function getHabitCompletionSeries(list) {
+  return Object.keys(list.habitDays || {}).sort().map(d => ({ date: d, value: getHabitDayPercent(list, d) }));
+}
+
+function getHabitTaskNumericSeries(list, task) {
+  return Object.keys(list.habitDays || {}).sort().map(d => {
+    const rec = list.habitDays[d]?.records?.[task.id];
+    const v = rec ? rec.value : null;
+    return { date: d, value: (v === '' || v === null || v === undefined) ? null : Number(v) };
+  }).filter(p => p.value !== null && !isNaN(p.value));
+}
+
+function filterHabitPointsByRange(points) {
+  if (analyticsRange === 'all') return points;
+  const days = analyticsRange === 'week' ? 7 : 30;
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  return points.filter(p => new Date(p.date).getTime() >= cutoff);
+}
+
+function drawHabitPercentChart(list) {
+  const canvas = document.getElementById('chart-habit-percent');
+  if (!canvas || !window.Chart) return;
+  const series = filterHabitPointsByRange(getHabitCompletionSeries(list));
+  if (!series.length) return;
+  const labels = series.map(p => formatAnalyticsDate(p.date));
+  const values = series.map(p => p.value);
+  const themeColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#6C4BA6';
+  if (analyticsChartInstances['habit-percent']) analyticsChartInstances['habit-percent'].destroy();
+  analyticsChartInstances['habit-percent'] = new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: { labels, datasets: [{ label: 'نسبة الإنجاز %', data: values, borderColor: themeColor, backgroundColor: themeColor + '20', tension: 0.3, fill: true, pointRadius: 3, pointBackgroundColor: themeColor }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100 }, x: { ticks: { maxRotation: 0, autoSkip: true } } } }
+  });
+}
+
+function drawHabitTaskChart(list, task) {
+  const canvas = document.getElementById('chart-habit-task-' + task.id);
+  if (!canvas || !window.Chart) return;
+  const series = filterHabitPointsByRange(getHabitTaskNumericSeries(list, task));
+  if (!series.length) return;
+  const labels = series.map(p => formatAnalyticsDate(p.date));
+  const values = series.map(p => p.value);
+  const themeColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#6C4BA6';
+  const key = 'habit-task-' + task.id;
+  if (analyticsChartInstances[key]) analyticsChartInstances[key].destroy();
+  analyticsChartInstances[key] = new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: { labels, datasets: [{ label: task.name, data: values, borderColor: themeColor, backgroundColor: themeColor + '20', tension: 0.3, fill: true, pointRadius: 3, pointBackgroundColor: themeColor }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { maxRotation: 0, autoSkip: true } } } }
+  });
+}
+
+// ---- Todo lists: monthly completion % (no week/month range filter — granularity is already monthly) ----
+function renderTodoAnalyticsBody(list) {
+  const series = getTodoCompletionSeries(list);
+  return `
+    <div class="card" style="margin-bottom:14px">
+      <h2 style="margin:0 0 10px">✅ نسبة الإنجاز الشهرية</h2>
+      ${series.length
+        ? `<div style="position:relative;height:220px"><canvas id="chart-todo-percent"></canvas></div>`
+        : `<div class="empty-state"><div class="icon">📉</div><p>لا توجد بيانات كافية بعد. أنجز بعض المهام في أي شهر ليظهر هنا.</p></div>`}
+    </div>
+  `;
+}
+
+function getTodoCompletionSeries(list) {
+  return Object.keys(list.months || {}).sort().map(m => ({ month: m, value: getMonthPercent(list, m) }));
+}
+
+function formatMonthLabel(m) {
+  const [y, mm] = m.split('-').map(Number);
+  const d = new Date(y, mm - 1, 1);
+  return d.toLocaleDateString('ar-EG', { month: 'short', year: 'numeric' });
+}
+
+function drawTodoPercentChart(list) {
+  const canvas = document.getElementById('chart-todo-percent');
+  if (!canvas || !window.Chart) return;
+  const series = getTodoCompletionSeries(list);
+  if (!series.length) return;
+  const labels = series.map(p => formatMonthLabel(p.month));
+  const values = series.map(p => p.value);
+  const themeColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#6C4BA6';
+  if (analyticsChartInstances['todo-percent']) analyticsChartInstances['todo-percent'].destroy();
+  analyticsChartInstances['todo-percent'] = new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: { labels, datasets: [{ label: 'نسبة الإنجاز %', data: values, backgroundColor: themeColor }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100 } } }
   });
 }
 
