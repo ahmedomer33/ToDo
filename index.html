@@ -1933,6 +1933,15 @@ function markOnboardingSeen() {
 const WHATSNEW_SEEN_KEY = 'todoAppWhatsNewSeenVersion';
 const CHANGELOG = [
   {
+    version: 'V12.09.26',
+    title: 'تنبيهات مواقيت الصلاة',
+    items: [
+      'قسم جديد في الإعدادات "🕌 تنبيهات مواقيت الصلاة": تفعيل/إيقاف، تحديد الموقع تلقائيًا أو بكتابة المدينة، واختيار طريقة الحساب',
+      'يمكنك تفعيل تنبيه كل صلاة على حدة (الفجر، الظهر، العصر، المغرب، العشاء)',
+      'تنبيهات الصلاة تظهر مع باقي التذكيرات في شاشة "التنبيهات"، وتتحدّث مواقيتها تلقائيًا كل يوم'
+    ]
+  },
+  {
     version: 'V11.09.26',
     title: 'تحليلات ورسوم بيانية لكل أنواع القوائم',
     items: [
@@ -2625,6 +2634,10 @@ function showApp() {
   if (whatsNewDot) whatsNewDot.style.display = hasSeenLatestWhatsNew() ? 'none' : 'inline-block';
   render();
   maybeAutoShowWhatsNew();
+  ensurePrayerSettings();
+  if (data.prayerSettings.enabled) {
+    fetchPrayerTimesForToday().then(() => { syncPrayerNativeIfNeeded(); render(); });
+  }
   if (IS_NATIVE) {
     refreshNativePermissionStatus().then(() => { syncNativeReminders(); render(); });
   }
@@ -3193,8 +3206,10 @@ function renderRemindersView(app) {
 
 // Jumps from the reminders screen straight into the task's own list/edit
 // modal, resolving whichever worksheet it lives in first (a reminder can be
-// for a task in any worksheet, not just the one currently open).
+// for a task in any worksheet, not just the one currently open). Prayer-time
+// reminders aren't real tasks — they jump to the prayer settings instead.
 function openReminderTask(listId, taskId) {
+  if (listId === '__prayers__') { appScreen = 'settings'; render(); return; }
   const loc = findListLocation(listId);
   if (!loc) return;
   currentWorksheetId = loc.worksheet.id;
@@ -3206,6 +3221,17 @@ function openReminderTask(listId, taskId) {
 
 // Turns a single reminder off without leaving the reminders screen.
 function disableReminderQuick(listId, taskId) {
+  if (listId === '__prayers__') {
+    const key = taskId.split('-')[1];
+    ensurePrayerSettings();
+    if (data.prayerSettings.prayers[key] !== undefined) {
+      data.prayerSettings.prayers[key] = false;
+      save();
+      syncPrayerNativeIfNeeded();
+      render();
+    }
+    return;
+  }
   const loc = findListLocation(listId);
   if (!loc) return;
   const taskArr = loc.list.type === 'habits' ? loc.list.habitTasks : loc.list.tasks;
@@ -3216,6 +3242,216 @@ function disableReminderQuick(listId, taskId) {
   save();
   if (IS_NATIVE) syncNativeReminders();
   render();
+}
+
+// ============ Prayer time reminders ============
+const PRAYER_LABELS = { fajr: 'الفجر', dhuhr: 'الظهر', asr: 'العصر', maghrib: 'المغرب', isha: 'العشاء' };
+const PRAYER_ICONS = { fajr: '🌙', dhuhr: '☀️', asr: '🌤️', maghrib: '🌇', isha: '🌌' };
+const PRAYER_METHODS = [
+  { id: 5, label: 'الهيئة المصرية العامة للمساحة' },
+  { id: 4, label: 'أم القرى - مكة المكرمة' },
+  { id: 3, label: 'رابطة العالم الإسلامي' },
+  { id: 8, label: 'منطقة الخليج' },
+  { id: 2, label: 'الجمعية الإسلامية لأمريكا الشمالية (ISNA)' },
+  { id: 13, label: 'ديانت - تركيا' }
+];
+
+function ensurePrayerSettings() {
+  if (!data.prayerSettings) {
+    data.prayerSettings = {
+      enabled: false, city: '', country: '', lat: null, lng: null, method: 5,
+      prayers: { fajr: true, dhuhr: true, asr: true, maghrib: true, isha: true },
+      cache: null
+    };
+  }
+  if (!data.prayerSettings.prayers) {
+    data.prayerSettings.prayers = { fajr: true, dhuhr: true, asr: true, maghrib: true, isha: true };
+  }
+}
+
+function renderPrayerSettingsCard() {
+  ensurePrayerSettings();
+  const ps = data.prayerSettings;
+  const today = getCurrentDateStr();
+
+  const locationLabel = (ps.lat != null && ps.lng != null)
+    ? `📍 تم تحديد الموقع (${ps.lat.toFixed(3)}, ${ps.lng.toFixed(3)})`
+    : (ps.city ? `📍 ${escapeHtml(ps.city)}${ps.country ? '، ' + escapeHtml(ps.country) : ''}` : 'لم يتم تحديد موقع بعد.');
+
+  const timingsHtml = (ps.cache && ps.cache.date === today)
+    ? `
+      <div class="form-group">
+        <label>مواقيت اليوم</label>
+        <div style="display:flex;flex-wrap:wrap;gap:12px">
+          ${Object.keys(PRAYER_LABELS).map(key => `
+            <div><span class="hint">${PRAYER_ICONS[key]} ${PRAYER_LABELS[key]}</span><div style="font-weight:800">${escapeHtml(ps.cache.timings[key] || '—')}</div></div>
+          `).join('')}
+        </div>
+      </div>
+    `
+    : `<p class="hint">${(ps.lat != null || ps.city) ? 'جارٍ التحديث أو تعذّر الجلب — جرّب "تحديث المواقيت الآن".' : 'حدد موقعك أولًا لعرض المواقيت.'}</p>`;
+
+  return `
+    <div class="card">
+      <div class="settings-section-title">🕌 تنبيهات مواقيت الصلاة</div>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:${ps.enabled ? '14px' : '0'}">
+        <input type="checkbox" ${ps.enabled ? 'checked' : ''} onchange="togglePrayerEnabled(this.checked)" style="width:auto">
+        تفعيل تنبيهات مواقيت الصلاة
+      </label>
+      ${ps.enabled ? `
+        <div class="form-group">
+          <label>الموقع</label>
+          <button type="button" class="btn-secondary" style="margin-bottom:10px" onclick="setPrayerLocationFromGeolocation()">📍 تحديد الموقع تلقائيًا</button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <input type="text" id="prayerCityInput" placeholder="المدينة" value="${escapeAttr(ps.city || '')}" style="flex:1;min-width:120px">
+            <input type="text" id="prayerCountryInput" placeholder="الدولة (اختياري)" value="${escapeAttr(ps.country || '')}" style="flex:1;min-width:120px">
+            <button type="button" class="btn-secondary" onclick="setPrayerLocationByCity()">بحث</button>
+          </div>
+          <p class="hint" style="margin-top:6px">${locationLabel}</p>
+        </div>
+        <div class="form-group">
+          <label>طريقة الحساب</label>
+          <select onchange="setPrayerMethod(this.value)">
+            ${PRAYER_METHODS.map(m => `<option value="${m.id}" ${Number(ps.method) === m.id ? 'selected' : ''}>${escapeHtml(m.label)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>الصلوات المفعّلة</label>
+          <div style="display:flex;flex-wrap:wrap;gap:14px">
+            ${Object.keys(PRAYER_LABELS).map(key => `
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+                <input type="checkbox" ${ps.prayers[key] ? 'checked' : ''} onchange="togglePrayerName('${key}', this.checked)" style="width:auto">
+                ${PRAYER_ICONS[key]} ${PRAYER_LABELS[key]}
+              </label>
+            `).join('')}
+          </div>
+        </div>
+        ${timingsHtml}
+        <button type="button" class="btn-secondary" onclick="refreshPrayerTimesNow()">🔄 تحديث المواقيت الآن</button>
+      ` : ''}
+    </div>
+  `;
+}
+
+function togglePrayerEnabled(checked) {
+  ensurePrayerSettings();
+  data.prayerSettings.enabled = checked;
+  save();
+  if (checked) refreshPrayerTimesNow();
+  else { syncPrayerNativeIfNeeded(); render(); }
+}
+
+function togglePrayerName(key, checked) {
+  ensurePrayerSettings();
+  data.prayerSettings.prayers[key] = checked;
+  save();
+  syncPrayerNativeIfNeeded();
+  render();
+}
+
+function setPrayerMethod(val) {
+  ensurePrayerSettings();
+  data.prayerSettings.method = Number(val);
+  data.prayerSettings.cache = null; // force refetch — method affects computed times
+  save();
+  refreshPrayerTimesNow();
+}
+
+function setPrayerLocationFromGeolocation() {
+  if (!navigator.geolocation) { alert('هذا الجهاز/المتصفح لا يدعم تحديد الموقع.'); return; }
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      ensurePrayerSettings();
+      data.prayerSettings.lat = pos.coords.latitude;
+      data.prayerSettings.lng = pos.coords.longitude;
+      data.prayerSettings.city = '';
+      data.prayerSettings.country = '';
+      data.prayerSettings.cache = null;
+      save();
+      refreshPrayerTimesNow();
+    },
+    () => { alert('تعذّر تحديد موقعك. تأكد من السماح بالوصول للموقع، أو أدخل اسم المدينة يدويًا.'); },
+    { timeout: 10000 }
+  );
+}
+
+function setPrayerLocationByCity() {
+  const city = (document.getElementById('prayerCityInput').value || '').trim();
+  const country = (document.getElementById('prayerCountryInput').value || '').trim();
+  if (!city) { alert('أدخل اسم المدينة.'); return; }
+  ensurePrayerSettings();
+  data.prayerSettings.city = city;
+  data.prayerSettings.country = country;
+  data.prayerSettings.lat = null;
+  data.prayerSettings.lng = null;
+  data.prayerSettings.cache = null;
+  save();
+  refreshPrayerTimesNow();
+}
+
+function refreshPrayerTimesNow() {
+  ensurePrayerSettings();
+  data.prayerSettings.cache = null;
+  fetchPrayerTimesForToday().then(() => { syncPrayerNativeIfNeeded(); render(); });
+}
+
+async function fetchPrayerTimesForToday() {
+  ensurePrayerSettings();
+  const ps = data.prayerSettings;
+  const today = getCurrentDateStr();
+  if (ps.cache && ps.cache.date === today) return ps.cache.timings;
+  if (ps.lat == null && !ps.city) return null;
+  try {
+    let url;
+    if (ps.lat != null && ps.lng != null) {
+      const [y, m, d] = today.split('-');
+      url = `https://api.aladhan.com/v1/timings/${d}-${m}-${y}?latitude=${ps.lat}&longitude=${ps.lng}&method=${ps.method}`;
+    } else {
+      url = `https://api.aladhan.com/v1/timingsByCity?city=${encodeURIComponent(ps.city)}&country=${encodeURIComponent(ps.country || '')}&method=${ps.method}`;
+    }
+    const res = await fetch(url);
+    const json = await res.json();
+    if (!json || json.code !== 200 || !json.data || !json.data.timings) throw new Error('bad response');
+    const t = json.data.timings;
+    ps.cache = {
+      date: today,
+      timings: {
+        fajr: String(t.Fajr || '').slice(0, 5),
+        dhuhr: String(t.Dhuhr || '').slice(0, 5),
+        asr: String(t.Asr || '').slice(0, 5),
+        maghrib: String(t.Maghrib || '').slice(0, 5),
+        isha: String(t.Isha || '').slice(0, 5)
+      }
+    };
+    save();
+    return ps.cache.timings;
+  } catch (e) {
+    console.error('prayer times fetch failed', e);
+    return null;
+  }
+}
+
+function collectPrayerReminders() {
+  ensurePrayerSettings();
+  const ps = data.prayerSettings;
+  if (!ps.enabled || !ps.cache) return [];
+  const today = getCurrentDateStr();
+  if (ps.cache.date !== today) return [];
+  const pseudoWorksheet = { id: '__prayers__', name: 'مواقيت الصلاة' };
+  const pseudoList = { id: '__prayers__', name: 'مواقيت الصلاة' };
+  const results = [];
+  Object.keys(PRAYER_LABELS).forEach(key => {
+    if (!ps.prayers[key]) return;
+    const time = ps.cache.timings[key];
+    if (!time) return;
+    const task = { id: 'prayer-' + key + '-' + today, name: PRAYER_LABELS[key], icon: PRAYER_ICONS[key], reminder: { enabled: true, time, date: today } };
+    results.push({ task, list: pseudoList, worksheet: pseudoWorksheet });
+  });
+  return results;
+}
+
+function syncPrayerNativeIfNeeded() {
+  if (IS_NATIVE) syncNativeReminders();
 }
 
 function renderSettingsView(app) {
@@ -3274,6 +3510,8 @@ function renderSettingsView(app) {
       </div>
       <button class="btn-primary" style="width:100%" onclick="changeAccountPassword()">حفظ كلمة المرور</button>
     </div>
+
+    ${renderPrayerSettingsCard()}
 
     <div class="card danger-zone">
       <div class="settings-section-title" style="color:#b91c1c">⚠️ حذف الحساب</div>
@@ -6245,6 +6483,7 @@ function collectAllTasksWithReminders() {
       }
     });
   });
+  results.push(...collectPrayerReminders());
   return results;
 }
 
@@ -6359,7 +6598,7 @@ setInterval(checkReminders, 20000);
 // ============ Init ============
 // Single source of truth for the version shown on the splash screen — keep in
 // sync with the "version" field in package.json when it's bumped.
-const APP_VERSION = 'V11.09.26';
+const APP_VERSION = 'V12.09.26';
 
 function hideSplashScreen() {
   const el = document.getElementById('splashScreen');
