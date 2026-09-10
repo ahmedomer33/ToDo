@@ -1081,6 +1081,41 @@
   .view-toggle button { flex: 1; }
   .view-toggle button.active { background: var(--primary); color: #fff; }
 
+  /* Settings screen sub-tabs — splits the long settings page into focused
+     sections instead of one endless scroll. Horizontally scrollable so it
+     still fits narrow phone screens without wrapping awkwardly. */
+  .settings-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 18px;
+    padding: 5px;
+    background: var(--primary-tint-3);
+    border-radius: 16px;
+    overflow-x: auto;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .settings-tabs::-webkit-scrollbar { display: none; }
+  .settings-tab-btn {
+    flex: 1 0 auto;
+    min-width: 78px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    background: transparent;
+    color: #6b7280;
+    padding: 9px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+    transform: none;
+  }
+  .settings-tab-btn:hover { transform: none; background: rgba(255,255,255,0.6); }
+  .settings-tab-btn.active { background: #fff; color: var(--primary-text); box-shadow: 0 2px 8px rgba(31,41,55,0.08); }
+  .settings-tab-btn .settings-tab-icon { font-size: 18px; line-height: 1; }
+
   .back-btn { margin-bottom: 16px; }
   .hint { font-size: 13px; color: #6b7280; margin-top: 6px; }
 
@@ -1941,6 +1976,7 @@ let data = { worksheets: [], pinnedWidgets: [] }; // placeholder; real per-user 
 let currentWorksheetId = null;
 let homeTab = 'main'; // 'main' | 'widgets' | 'stats' — the active bottom tab on the home screen
 let searchQuery = '';
+let settingsTab = 'account'; // 'account' | 'appearance' | 'alarm' | 'prayer' — which sub-tab of the settings screen is open
 let editingWorksheetId = null;
 let currentListId = null;
 let currentMonth = getCurrentMonth(); // YYYY-MM
@@ -1995,6 +2031,15 @@ function markOnboardingSeen() {
 // script) instead of a separate internal counter, so both stay in sync.
 const WHATSNEW_SEEN_KEY = 'todoAppWhatsNewSeenVersion';
 const CHANGELOG = [
+  {
+    version: 'V13.09.26',
+    title: 'إعدادات مقسّمة لتبويبات، خلفيات مناظر طبيعية، ونغمات أفضل',
+    items: [
+      'شاشة الإعدادات بقت مقسّمة لـ 4 تبويبات (الحساب، المظهر، التنبيه، الصلاة) بدل صفحة واحدة طويلة',
+      '7 خلفيات جديدة لشاشة التنبيه بمناظر طبيعية (جبال عند الغروب، محيط، تلال وغابات، سماء ليلية، كثبان صحراوية، قمم ثلجية، شفق قطبي)',
+      'نغمات جديدة (ساعة رقمية، أجراس ريح، تغريد عصافير) بالإضافة لتحسين جودة كل النغمات القديمة بحيث تصدر بنعومة بدل الصوت الحاد المفاجئ'
+    ]
+  },
   {
     version: 'V12.09.26',
     title: 'التحكم في صوت وخلفية شاشة التنبيه',
@@ -3345,19 +3390,91 @@ function ensurePrayerSettings() {
 }
 
 // ============ Alarm overlay appearance/sound settings ============
+// Each preset paints a small flat-design "landscape" using only layered CSS
+// gradients (no image files, so it stays crisp and works fully offline):
+// a sky gradient plus a few bottom-anchored radial gradients that overlap
+// like rolling hills/mountain silhouettes, and — where relevant — a glowing
+// sun/moon and a scatter of stars.
 const ALARM_BG_PRESETS = [
-  { id: 'primary', label: 'اللون الأساسي', css: 'linear-gradient(160deg, var(--primary), var(--primary-darker))' },
-  { id: 'sunset', label: 'غروب', css: 'linear-gradient(160deg, #F97316, #7C2D12)' },
-  { id: 'ocean', label: 'محيط', css: 'linear-gradient(160deg, #0EA5E9, #0C4A6E)' },
-  { id: 'forest', label: 'غابة', css: 'linear-gradient(160deg, #22C55E, #14532D)' },
-  { id: 'night', label: 'ليلي داكن', css: 'linear-gradient(160deg, #1E293B, #0F172A)' },
-  { id: 'rose', label: 'وردي', css: 'linear-gradient(160deg, #F43F5E, #881337)' }
+  {
+    id: 'primary',
+    label: 'اللون الأساسي',
+    css: 'linear-gradient(160deg, var(--primary), var(--primary-darker))'
+  },
+  {
+    id: 'mountains',
+    label: 'جبال عند الغروب',
+    css: `radial-gradient(circle at 50% 46%, rgba(255,224,178,0.95) 0%, rgba(255,224,178,0) 11%),
+          radial-gradient(ellipse 75% 42% at 20% 100%, #3B2145 0%, transparent 62%),
+          radial-gradient(ellipse 85% 46% at 62% 100%, #4E2A5E 0%, transparent 66%),
+          radial-gradient(ellipse 90% 36% at 95% 100%, #5C3566 0%, transparent 60%),
+          linear-gradient(180deg, #FF9A56 0%, #FF6F91 32%, #6A4C93 66%, #2E1A47 100%)`
+  },
+  {
+    id: 'ocean',
+    label: 'محيط هادئ',
+    css: `radial-gradient(circle at 74% 26%, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0) 9%),
+          radial-gradient(ellipse 100% 32% at 50% 100%, #023E8A 0%, transparent 72%),
+          linear-gradient(180deg, #90E0EF 0%, #48CAE4 32%, #00B4D8 58%, #0077B6 100%)`
+  },
+  {
+    id: 'forest',
+    label: 'تلال وغابات',
+    css: `radial-gradient(ellipse 65% 46% at 18% 100%, #1B4332 0%, transparent 62%),
+          radial-gradient(ellipse 75% 50% at 58% 100%, #2D6A4F 0%, transparent 66%),
+          radial-gradient(ellipse 85% 40% at 92% 100%, #40916C 0%, transparent 60%),
+          linear-gradient(180deg, #D8F3DC 0%, #95D5B2 42%, #52B788 100%)`
+  },
+  {
+    id: 'night',
+    label: 'سماء ليلية',
+    css: `radial-gradient(circle at 18% 16%, #fff 0%, transparent 1.4%),
+          radial-gradient(circle at 38% 10%, #fff 0%, transparent 1.1%),
+          radial-gradient(circle at 68% 22%, #fff 0%, transparent 1.2%),
+          radial-gradient(circle at 84% 13%, #fff 0%, transparent 1%),
+          radial-gradient(circle at 55% 6%, #fff 0%, transparent 1%),
+          radial-gradient(circle at 28% 32%, rgba(255,255,255,0.85) 0%, transparent 1.1%),
+          radial-gradient(circle at 64% 42%, rgba(226,232,240,0.95) 0%, rgba(226,232,240,0.25) 6%, transparent 7%),
+          radial-gradient(ellipse 85% 40% at 50% 100%, #0F172A 0%, transparent 64%),
+          linear-gradient(180deg, #0B1026 0%, #16213E 55%, #1E293B 100%)`
+  },
+  {
+    id: 'desert',
+    label: 'كثبان صحراوية',
+    css: `radial-gradient(circle at 78% 22%, rgba(255,241,214,0.95) 0%, rgba(255,241,214,0) 10%),
+          radial-gradient(ellipse 72% 42% at 28% 100%, #C97B3D 0%, transparent 62%),
+          radial-gradient(ellipse 82% 36% at 76% 100%, #D99A5B 0%, transparent 65%),
+          linear-gradient(180deg, #FDE9C8 0%, #F8C471 46%, #E8985A 100%)`
+  },
+  {
+    id: 'snow',
+    label: 'قمم ثلجية',
+    css: `radial-gradient(circle at 30% 20%, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0) 9%),
+          radial-gradient(ellipse 72% 46% at 22% 100%, #E9ECEF 0%, transparent 62%),
+          radial-gradient(ellipse 82% 40% at 62% 100%, #CED4DA 0%, transparent 62%),
+          radial-gradient(ellipse 90% 34% at 96% 100%, #ADB5BD 0%, transparent 56%),
+          linear-gradient(180deg, #A9D6E5 0%, #C9E4F6 52%, #E8F1F8 100%)`
+  },
+  {
+    id: 'aurora',
+    label: 'الشفق القطبي',
+    css: `radial-gradient(circle at 28% 18%, rgba(64,255,180,0.4) 0%, transparent 42%),
+          radial-gradient(circle at 68% 12%, rgba(130,90,255,0.4) 0%, transparent 46%),
+          radial-gradient(circle at 45% 30%, rgba(60,190,255,0.25) 0%, transparent 40%),
+          radial-gradient(ellipse 82% 40% at 50% 100%, #0B132B 0%, transparent 66%),
+          linear-gradient(180deg, #0B132B 0%, #1C2541 60%, #3A506B 100%)`
+  }
 ];
 
+// Tones are synthesized live with the Web Audio API (see playAlarmPattern
+// below) — no external audio files, so this stays lightweight and offline.
 const ALARM_SOUND_OPTIONS = [
-  { id: 'classic', label: '🔔 كلاسيكي' },
+  { id: 'classic', label: '⏰ كلاسيكي' },
+  { id: 'digital', label: '📟 ساعة رقمية' },
   { id: 'gentle', label: '🎐 هادئ' },
-  { id: 'bell', label: '🛎️ جرس' },
+  { id: 'chimes', label: '✨ أجراس الريح' },
+  { id: 'bell', label: '🔔 جرس' },
+  { id: 'birds', label: '🐦 تغريد عصافير' },
   { id: 'none', label: '🔇 بدون صوت' }
 ];
 
@@ -3382,9 +3499,13 @@ function renderAlarmSettingsCard() {
       </div>
       <div class="form-group">
         <label>خلفية شاشة التنبيه</label>
+        <p class="hint" style="margin-top:-2px;margin-bottom:10px">كل خلفية معاينة مصغّرة لشكلها الحقيقي على الشاشة الكاملة.</p>
         <div style="display:flex;flex-wrap:wrap;gap:10px">
           ${ALARM_BG_PRESETS.map(p => `
-            <div onclick="setAlarmBackground('${p.id}')" title="${escapeAttr(p.label)}" style="width:52px;height:40px;border-radius:10px;background:${p.css};cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:800;border:${as.background === p.id ? '3px solid #111' : '3px solid transparent'}">${as.background === p.id ? '✓' : ''}</div>
+            <div style="text-align:center">
+              <div onclick="setAlarmBackground('${p.id}')" title="${escapeAttr(p.label)}" style="width:66px;height:52px;border-radius:12px;background:${p.css};cursor:pointer;display:flex;align-items:flex-start;justify-content:flex-end;padding:4px;color:#fff;font-size:13px;font-weight:800;border:${as.background === p.id ? '3px solid #111' : '3px solid transparent'};box-shadow:0 2px 6px rgba(31,41,55,0.12)">${as.background === p.id ? '✓' : ''}</div>
+              <div style="font-size:10.5px;color:#6b7280;margin-top:4px;max-width:70px">${escapeHtml(p.label)}</div>
+            </div>
           `).join('')}
         </div>
       </div>
@@ -3608,6 +3729,18 @@ function syncPrayerNativeIfNeeded() {
   if (IS_NATIVE) syncNativeReminders();
 }
 
+const SETTINGS_TABS = [
+  { id: 'account', icon: '👤', label: 'الحساب' },
+  { id: 'appearance', icon: '🎨', label: 'المظهر' },
+  { id: 'alarm', icon: '⏰', label: 'التنبيه' },
+  { id: 'prayer', icon: '🕌', label: 'الصلاة' }
+];
+
+function switchSettingsTab(tab) {
+  settingsTab = tab;
+  render();
+}
+
 function renderSettingsView(app) {
   const rec = findUserRecord(currentUser) || {};
   const avatarHtml = rec.avatar
@@ -3615,65 +3748,85 @@ function renderSettingsView(app) {
     : `<div class="avatar-lg">${escapeHtml((currentUser || '?').trim().charAt(0).toUpperCase())}</div>`;
   const joined = rec.createdAt ? formatGregorianFull(rec.createdAt.slice(0, 10)) : '';
 
+  const tabsHtml = `
+    <div class="settings-tabs">
+      ${SETTINGS_TABS.map(t => `
+        <button type="button" class="settings-tab-btn${settingsTab === t.id ? ' active' : ''}" onclick="switchSettingsTab('${t.id}')">
+          <span class="settings-tab-icon">${t.icon}</span>
+          <span>${t.label}</span>
+        </button>
+      `).join('')}
+    </div>
+  `;
+
+  let sectionHtml = '';
+  if (settingsTab === 'account') {
+    sectionHtml = `
+      <div class="card" style="text-align:center">
+        <div class="avatar-edit-wrap">
+          ${avatarHtml}
+          <div class="avatar-edit-btn" onclick="triggerAvatarUpload()" title="تغيير الصورة">📷</div>
+        </div>
+        ${rec.avatar ? `<button class="btn-secondary" style="margin-top:12px" onclick="removeAvatar()">إزالة الصورة</button>` : ''}
+        <h2 style="margin-top:14px">${escapeHtml(currentUser || '')}${rec.isAdmin ? ' <span class="admin-badge">👑 أدمن</span>' : ''}</h2>
+        ${joined ? `<p class="hint">عضو منذ ${joined}</p>` : ''}
+      </div>
+
+      <div class="card">
+        <div class="settings-section-title">🔒 تغيير كلمة المرور</div>
+        <div class="form-group">
+          <label>كلمة المرور الحالية</label>
+          <input type="password" id="curAccountPassword" autocomplete="current-password">
+        </div>
+        <div class="form-group">
+          <label>كلمة المرور الجديدة</label>
+          <input type="password" id="newAccountPassword" autocomplete="new-password">
+        </div>
+        <div class="form-group">
+          <label>تأكيد كلمة المرور الجديدة</label>
+          <input type="password" id="newAccountPasswordConfirm" autocomplete="new-password">
+        </div>
+        <button class="btn-primary" style="width:100%" onclick="changeAccountPassword()">حفظ كلمة المرور</button>
+      </div>
+
+      <div class="card danger-zone">
+        <div class="settings-section-title" style="color:#b91c1c">⚠️ حذف الحساب</div>
+        <p class="hint">سيُحذف حسابك وكل بياناته (قوائمك وأوراق عملك) نهائيًا من هذا المتصفح. لا يمكن التراجع عن هذا الإجراء.</p>
+        <button class="btn-danger" style="width:100%" onclick="deleteMyAccount()">🗑️ حذف حسابي نهائيًا</button>
+      </div>
+    `;
+  } else if (settingsTab === 'appearance') {
+    sectionHtml = `
+      <div class="card">
+        <div class="settings-section-title">🎨 لون المظهر</div>
+        <p class="hint" style="margin-top:-4px;margin-bottom:12px">اختر اللون الأساسي لتطبيقك — يُحفظ هذا الاختيار مع حسابك ويظهر في كل مرة تسجّل فيها الدخول.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+          ${THEME_PRESETS.map(c => {
+            const selected = (data.themeColor || DEFAULT_THEME_COLOR).toLowerCase() === c.toLowerCase();
+            return `<div onclick="setThemeColor('${c}')" title="${c}" style="width:36px;height:36px;border-radius:50%;background:${c};cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;font-weight:800;border:${selected ? '3px solid #111' : '3px solid transparent'}">${selected ? '✓' : ''}</div>`;
+          }).join('')}
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <label style="margin:0">لون مخصص</label>
+          <input type="color" value="${escapeAttr(data.themeColor || DEFAULT_THEME_COLOR)}" oninput="setThemeColor(this.value)" style="width:56px;height:38px;padding:2px;flex-shrink:0">
+          <button class="btn-secondary" onclick="resetThemeColor()">استعادة الافتراضي</button>
+        </div>
+      </div>
+    `;
+  } else if (settingsTab === 'alarm') {
+    sectionHtml = renderAlarmSettingsCard();
+  } else if (settingsTab === 'prayer') {
+    sectionHtml = renderPrayerSettingsCard();
+  }
+
   const html = `
     <button class="btn-secondary back-btn" onclick="closeAppScreen()">→ العودة</button>
     <div class="page-header">
       <div class="page-header-icon hdr-purple">⚙️</div>
       <h1>إعدادات الحساب</h1>
     </div>
-
-    <div class="card" style="text-align:center">
-      <div class="avatar-edit-wrap">
-        ${avatarHtml}
-        <div class="avatar-edit-btn" onclick="triggerAvatarUpload()" title="تغيير الصورة">📷</div>
-      </div>
-      ${rec.avatar ? `<button class="btn-secondary" style="margin-top:12px" onclick="removeAvatar()">إزالة الصورة</button>` : ''}
-      <h2 style="margin-top:14px">${escapeHtml(currentUser || '')}${rec.isAdmin ? ' <span class="admin-badge">👑 أدمن</span>' : ''}</h2>
-      ${joined ? `<p class="hint">عضو منذ ${joined}</p>` : ''}
-    </div>
-
-    <div class="card">
-      <div class="settings-section-title">🎨 لون المظهر</div>
-      <p class="hint" style="margin-top:-4px;margin-bottom:12px">اختر اللون الأساسي لتطبيقك — يُحفظ هذا الاختيار مع حسابك ويظهر في كل مرة تسجّل فيها الدخول.</p>
-      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px">
-        ${THEME_PRESETS.map(c => {
-          const selected = (data.themeColor || DEFAULT_THEME_COLOR).toLowerCase() === c.toLowerCase();
-          return `<div onclick="setThemeColor('${c}')" title="${c}" style="width:36px;height:36px;border-radius:50%;background:${c};cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;font-weight:800;border:${selected ? '3px solid #111' : '3px solid transparent'}">${selected ? '✓' : ''}</div>`;
-        }).join('')}
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <label style="margin:0">لون مخصص</label>
-        <input type="color" value="${escapeAttr(data.themeColor || DEFAULT_THEME_COLOR)}" oninput="setThemeColor(this.value)" style="width:56px;height:38px;padding:2px;flex-shrink:0">
-        <button class="btn-secondary" onclick="resetThemeColor()">استعادة الافتراضي</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="settings-section-title">🔒 تغيير كلمة المرور</div>
-      <div class="form-group">
-        <label>كلمة المرور الحالية</label>
-        <input type="password" id="curAccountPassword" autocomplete="current-password">
-      </div>
-      <div class="form-group">
-        <label>كلمة المرور الجديدة</label>
-        <input type="password" id="newAccountPassword" autocomplete="new-password">
-      </div>
-      <div class="form-group">
-        <label>تأكيد كلمة المرور الجديدة</label>
-        <input type="password" id="newAccountPasswordConfirm" autocomplete="new-password">
-      </div>
-      <button class="btn-primary" style="width:100%" onclick="changeAccountPassword()">حفظ كلمة المرور</button>
-    </div>
-
-    ${renderAlarmSettingsCard()}
-
-    ${renderPrayerSettingsCard()}
-
-    <div class="card danger-zone">
-      <div class="settings-section-title" style="color:#b91c1c">⚠️ حذف الحساب</div>
-      <p class="hint">سيُحذف حسابك وكل بياناته (قوائمك وأوراق عملك) نهائيًا من هذا المتصفح. لا يمكن التراجع عن هذا الإجراء.</p>
-      <button class="btn-danger" style="width:100%" onclick="deleteMyAccount()">🗑️ حذف حسابي نهائيًا</button>
-    </div>
+    ${tabsHtml}
+    ${sectionHtml}
   `;
   app.innerHTML = html;
 }
@@ -6683,30 +6836,99 @@ function snoozeAlarmOverlay() {
   setTimeout(() => { showAlarmOverlay(info.list, info.task); }, 5 * 60 * 1000);
 }
 
-// A few short tone patterns via Web Audio — no external sound files needed.
-// Each schedules its own beeps and self-stops; stopAlarmSound() cancels
-// everything still pending if the person dismisses early.
+// Tone patterns synthesized live via Web Audio — no external sound files
+// needed. Every note gets a soft attack + exponential decay envelope (instead
+// of switching the oscillator instantly on/off) so nothing clicks or pops,
+// which is most of what made the old beeps sound harsh. Each pattern plays
+// once then loops itself via playAlarmSound() until stopAlarmSound() cancels
+// the pending timers, which also happens automatically if the person
+// dismisses or snoozes the alarm early.
 let alarmAudioTimers = [];
 
-function scheduleBeep(freq, gainVal, durationMs, delayMs) {
+// Schedules a single tone. opts: type (oscillator waveform), peak (volume
+// 0-1), attack (ms to reach peak volume), sweepTo (optional end frequency,
+// for chirp-style sweeps), harmonics (optional array of {mult, gain} extra
+// overtones layered on top of the fundamental — this is what gives the
+// "bell" and "chimes" sounds their richer, less beep-y timbre).
+function scheduleTone(freq, delayMs, durationMs, opts = {}) {
+  const { type = 'sine', peak = 0.16, attack = 12, sweepTo = null, harmonics = [] } = opts;
   const timerId = setTimeout(() => {
     try {
       const ctx = alarmAudioCtx;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-      gain.gain.value = gainVal;
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      alarmAudioNodes.push(osc);
-      const stopTimer = setTimeout(() => { try { osc.stop(); } catch (e) { /* ignore */ } }, durationMs);
-      alarmAudioTimers.push(stopTimer);
+      const now = ctx.currentTime;
+      const dur = durationMs / 1000;
+      const partials = [{ mult: 1, gain: 1 }, ...harmonics];
+      partials.forEach(part => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq * part.mult, now);
+        if (sweepTo) osc.frequency.linearRampToValueAtTime(sweepTo * part.mult, now + dur);
+        const partPeak = peak * part.gain;
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.linearRampToValueAtTime(partPeak, now + attack / 1000);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + dur + 0.05);
+        alarmAudioNodes.push(osc);
+      });
     } catch (e) { /* ignore — audio isn't critical to the reminder itself */ }
   }, delayMs);
   alarmAudioTimers.push(timerId);
 }
+
+// Schedules one cycle of the chosen pattern and returns its total length in
+// ms (including trailing silence) so playAlarmSound() knows when to loop.
+function playAlarmPattern(type) {
+  if (type === 'digital') {
+    // Modern digital clock: crisp double-beep, repeated a few times.
+    const beep = t => scheduleTone(1046, t, 110, { type: 'square', peak: 0.16, attack: 4 });
+    [0, 190, 620, 810, 1240, 1430].forEach(beep);
+    return 2100;
+  }
+  if (type === 'gentle') {
+    // Soft ascending pentatonic chime — calm wake-up feel.
+    const notes = [523, 659, 784, 1046];
+    notes.forEach((f, i) => scheduleTone(f, i * 520, 1000, {
+      type: 'sine', peak: 0.14, attack: 40,
+      harmonics: [{ mult: 2, gain: 0.18 }]
+    }));
+    return notes.length * 520 + 1600;
+  }
+  if (type === 'chimes') {
+    // Wind chimes: a light cascade of bell-ish notes at varied pitches.
+    const notes = [988, 784, 1175, 659, 880];
+    notes.forEach((f, i) => scheduleTone(f, i * 340, 1500, {
+      type: 'sine', peak: 0.12, attack: 15,
+      harmonics: [{ mult: 2.4, gain: 0.22 }, { mult: 3.5, gain: 0.1 }]
+    }));
+    return notes.length * 340 + 1500;
+  }
+  if (type === 'bell') {
+    // Struck bell: fundamental + inharmonic overtones for a metallic ring.
+    [0, 1300, 2600].forEach(t => scheduleTone(659, t, 1700, {
+      type: 'sine', peak: 0.16, attack: 6,
+      harmonics: [{ mult: 2.01, gain: 0.35 }, { mult: 3.0, gain: 0.18 }, { mult: 4.2, gain: 0.09 }]
+    }));
+    return 3900 + 900;
+  }
+  if (type === 'birds') {
+    // Quick upward chirps mimicking a bird call.
+    const chirp = t => {
+      scheduleTone(2200, t, 110, { type: 'sine', peak: 0.13, attack: 3, sweepTo: 3100 });
+      scheduleTone(2000, t + 130, 90, { type: 'sine', peak: 0.11, attack: 3, sweepTo: 2800 });
+    };
+    [0, 260, 900, 1160].forEach(chirp);
+    return 1160 + 700;
+  }
+  // classic: three short clear beeps, like a traditional alarm clock.
+  [0, 340, 680].forEach(t => scheduleTone(880, t, 240, { type: 'sine', peak: 0.18, attack: 5 }));
+  return 680 + 1500;
+}
+
+let alarmLoopTimer = null;
 
 function playAlarmSound() {
   ensureAlarmSettings();
@@ -6715,19 +6937,13 @@ function playAlarmSound() {
   if (soundType === 'none') return;
   try {
     if (!alarmAudioCtx) alarmAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (alarmAudioCtx.state === 'suspended') alarmAudioCtx.resume();
   } catch (e) { return; }
   alarmAudioNodes = [];
   alarmAudioTimers = [];
-  if (soundType === 'gentle') {
-    for (let i = 0; i < 4; i++) scheduleBeep(523, 0.08, 700, i * 2000);
-  } else if (soundType === 'bell') {
-    for (let i = 0; i < 3; i++) {
-      scheduleBeep(784, 0.15, 350, i * 1400);
-      scheduleBeep(659, 0.15, 500, i * 1400 + 350);
-    }
-  } else {
-    scheduleBeep(880, 0.15, 15000, 0);
-  }
+  const cycleMs = playAlarmPattern(soundType);
+  alarmLoopTimer = setTimeout(playAlarmSound, cycleMs);
+  alarmAudioTimers.push(alarmLoopTimer);
 }
 
 function stopAlarmSound() {
@@ -6936,7 +7152,7 @@ setInterval(checkReminders, 20000);
 // ============ Init ============
 // Single source of truth for the version shown on the splash screen — keep in
 // sync with the "version" field in package.json when it's bumped.
-const APP_VERSION = 'V12.09.26';
+const APP_VERSION = 'V13.09.26';
 
 function hideSplashScreen() {
   const el = document.getElementById('splashScreen');

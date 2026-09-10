@@ -1,6 +1,6 @@
 {
   "name": "focus-todo-app",
-  "version": "V12.09.26",
+  "version": "V13.09.26",
   "private": true,
   "description": "Focus Todo — wrapped as a native Android app with Capacitor",
   "scripts": {
